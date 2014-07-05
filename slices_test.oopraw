@@ -1,0 +1,146 @@
+package libgosimpleton
+
+import(
+	"testing"
+)
+
+//https://code.google.com/p/go-wiki/wiki/SliceTricks
+
+func TestSliceStringHasKey(t *testing.T) {
+	in := NewSliceString([]string{ "a", "c", "d", "c" })
+	in2 := 0
+	out := true
+
+	if x := in.HasKey(in2); x != out {
+		t.Errorf("SliceString.HasKey(%v) = %v, want %v", in2, x, out)
+	}
+
+	in2 = -1
+	out = false
+	if x := in.HasKey(in2); x != out {
+		t.Errorf("SliceString.HasKey(%v) = %v, want %v", in2, x, out)
+	}
+
+	in2 = 4
+	if x := in.HasKey(in2); x != out {
+		t.Errorf("SliceString.HasKey(%v) = %v, want %v", in2, x, out)
+	}
+}
+
+func TestSliceStringEqual(t *testing.T) {
+	in := NewSliceString([]string{ "a", "c", "d", "c" })
+	in2 := []string{ "A", "C", "D", "C" }
+	out := false
+
+	if x := in.Equal(in2); x != out {
+		t.Errorf("SliceString.Equal(%v) = %v, want %v", in2, x, out)
+	}
+
+	in2 = []string{ "acdc" }
+	if x := in.Equal(in2); x != out {
+		t.Errorf("SliceString.Equal(%v) = %v, want %v", in2, x, out)
+	}
+
+	in = NewSliceString([]string{ "A", "C", "D", "C" })
+	if x := in.Equal(in2); x != out {
+		t.Errorf("SliceString.Equal(%v) = %v, want %v", in2, x, out)
+	}
+
+	in2 = []string{ "A", "C", "D", "C" }
+	out = true
+	if x := in.Equal(in2); x != out {
+		t.Errorf("SliceString.Equal(%v) = %v, want %v", in2, x, out)
+	}
+}
+
+func TestSliceStringCut(t *testing.T) {
+	String := NewSliceString([]string{ "a", "c", "d", "c" })
+	out := []string{ "c", "d", "c" }
+	i, j := 0, 1
+
+	if String.Cut(i, j); !String.Equal(out) {
+		t.Errorf("SliceString.Cut(%v, %v) = %v, want %v", i, j, String.Get(), out)
+	}
+
+	j = 0
+	if String.Cut(i, j); !String.Equal(out) {
+		t.Errorf("SliceString.Cut(%v, %v) = %v, want %v", i, j, String.Get(), out)
+	}
+
+	out = []string{ "c", "c" }
+	i, j = 1, -1
+	if String.Cut(i, j); !String.Equal(out) {
+		t.Errorf("SliceString.Cut(%v, %v) = %v, want %v", i, j, String.Get(), out)
+	}
+}
+
+func TestSliceStringGet(t *testing.T) {
+	String := []string{ "a", "c", "d", "c" }
+	StringSlice := NewSliceString(String)
+
+	if x := StringSlice.Get(); !StringSlice.Equal(x) {
+		t.Errorf("SliceString.Get() = %v, want %v", x, String)
+	}
+}
+
+func TestSliceStringDelete(t *testing.T) {
+	String := NewSliceString([]string{ "a", "c", "d", "c" })
+	out := []string{ "c", "d", "c" }
+	i := 0
+
+	if String.Delete(i); !String.Equal(out) {
+		t.Errorf("SliceString.Delete(%v) = %v, want %v", String.Get(), out)
+	}
+}
+
+func TestSliceStringInsert(t *testing.T) {
+	String := NewSliceString([]string{ "a", "c", "d", "c" })
+	insert := "/"
+	out := []string{ "a", "c", "/", "d", "c" }
+	i := 2
+
+	if String.Insert(insert, i); !String.Equal(out) {
+		t.Errorf("SliceString.Insert(%v, %v) = %v, want %v", insert, i, String.Get(), out)
+	}
+
+	String = NewSliceString([]string{ "a", "c", "d", "c" })
+	out = []string{ "a", "c", "d", "c" }
+	insert = ""
+
+	if String.Insert(insert, i); !String.Equal(out) {
+		t.Errorf("SliceString.Insert(%v, %v) = %v, want %v", insert, i, String.Get(), out)
+	}
+}
+
+func TestSliceStringPop(t *testing.T) {
+	String := NewSliceString([]string{ "a", "c", "d", "c" })
+	out1, out2 := []string{ "a", "c", "d" }, "c"
+
+	if x, y := String.Pop(); !String.Equal(out1) || x != out2 {
+		t.Errorf("SliceString.Pop() = %v, %v want %v, %v", x, y.Get(), out1, out2)
+	}
+
+	String = NewSliceString([]string{ })
+	out1, out2 = []string{ }, ""
+
+	if x, y := String.Pop(); !String.Equal(out1) || x != out2 {
+		t.Errorf("SliceString.Pop() = %v, %v want %v, %v", x, y.Get(), out1, out2)
+	}
+}
+
+func TestSliceStringPush(t *testing.T) {
+	String, in := NewSliceString([]string{ "a", "c", "d" }), "c"
+	out := []string{ "a", "c", "d", "c" }
+
+	if String.Push(in); !String.Equal(out) {
+		t.Errorf("SliceString.Push(%v) = %v want %v", in, String.Get(), out)
+	}
+
+	String, in = NewSliceString([]string{ }), ""
+	out = []string{ "" }
+
+	if String.Push(in); !String.Equal(out) {
+		t.Errorf("SliceString.Push(%v) = %v want %v", in, String.Get(), out)
+	}
+}
+

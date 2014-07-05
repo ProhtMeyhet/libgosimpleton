@@ -1,0 +1,107 @@
+func HasKey#TYPE(a []#TYPE, k int) (b bool) {
+	defer func() {
+		if p := recover(); p != nil {
+			b = false
+		}
+	}()
+
+	b = true
+
+	_ = a[k]
+
+	return 
+}
+
+type Slice#TYPECAMEL struct {
+	a []#TYPE
+	empty #TYPE
+}
+
+func NewSlice#TYPECAMEL(i []#TYPE) *Slice#TYPECAMEL {
+	operator := &Slice#TYPECAMEL{}
+	operator.a = i
+	return operator
+}
+
+func (s *Slice#TYPECAMEL) Get() []#TYPE {
+	return s.a
+}
+
+func (s *Slice#TYPECAMEL) HasKey(k int) bool {
+	return HasKey#TYPE(s.a, k)
+}
+
+func (s *Slice#TYPECAMEL) Equal(to []#TYPE) bool {
+	if len(s.a) != len(to) {
+		return false
+	}
+
+	for k, v := range s.a {
+		if HasKey#TYPE(to, k) {
+			if v != to[k] {
+				return false
+			}
+		} else {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (s *Slice#TYPECAMEL) Cut(i, j int) *Slice#TYPECAMEL {
+	if j < 0 {
+		j = len(s.a) + j
+	}
+
+	if j < i {
+		return s
+	}
+
+	// consider the slice cut
+	if len(s.a) < i {
+		return s
+	}
+
+	copy(s.a[i:], s.a[j:])
+	for k, n := len(s.a)-j+i, len(s.a); k < n; k ++ {
+	    s.a[k] = s.empty
+	}
+	s.a = s.a[:len(s.a)-j+i]
+	return s
+}
+
+func (s *Slice#TYPECAMEL) Delete(i int) *Slice#TYPECAMEL {
+	if i > 0 {
+		return s.Cut(i-1, i)
+	} else {
+		return s.Cut(i, i+1)
+	}
+}
+
+func (s *Slice#TYPECAMEL) Insert(what #TYPE, i int) *Slice#TYPECAMEL {
+	if what == s.empty {
+		return s
+	}
+
+	s.a = append(s.a, s.empty)
+	copy(s.a[i+1:], s.a[i:])
+	s.a[i] = what
+	return s
+}
+
+func (s *Slice#TYPECAMEL) Pop() (#TYPE, *Slice#TYPECAMEL) {
+	// pop is empty
+	if len(s.a) < 1 {
+		return s.empty, s
+	}
+
+	x := s.a[len(s.a)-1]
+	s.a = s.a[:len(s.a)-1]
+	return x, s
+}
+
+func (s *Slice#TYPECAMEL) Push(x #TYPE) *Slice#TYPECAMEL {
+	s.a = append(s.a, x)
+	return s
+}

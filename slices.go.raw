@@ -1,0 +1,94 @@
+var empty#TYPECAMEL #TYPE
+
+func HasKey#TYPECAMEL(a []#TYPE, k int) (b bool) {
+	defer func() {
+		if p := recover(); p != nil {
+			b = false
+		}
+	}()
+
+	b = true
+
+	_ = a[k]
+
+	return
+}
+
+func Slice#TYPECAMELEqual(a, to []#TYPE) bool {
+	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", to)
+}
+
+func Slice#TYPECAMELExactlyEqual(a, to []#TYPE) bool {
+	if len(a) != len(to) {
+		return false
+	}
+
+	for k, v := range a {
+		if HasKey#TYPECAMEL(to, k) {
+			if v != to[k] {
+				return false
+			}
+		} else {
+			return false
+		}
+	}
+
+	return true
+}
+
+func Slice#TYPECAMELCut(a []#TYPE, i, j int) []#TYPE {
+	if j < 0 {
+		j = len(a) + j
+	}
+
+	if j <= i {
+		return a
+	}
+
+	// consider the slice cut
+	if len(a) < i {
+		return a
+	}
+
+	if len(a) < j {
+		j = len(a)
+	}
+
+	copy(a[i:], a[j:])
+	for k, n := len(a)-j+i, len(a); k < n; k ++ {
+	    a[k] = empty#TYPECAMEL
+	}
+	a = a[:len(a)-j+i]
+	return a
+}
+
+func Slice#TYPECAMELDelete(a []#TYPE, i int) []#TYPE {
+	if i > 0 {
+		return Slice#TYPECAMELCut(a, i-1, i)
+	} else {
+		return Slice#TYPECAMELCut(a, i, i+1)
+	}
+}
+
+func Slice#TYPECAMELInsert(a []#TYPE, what #TYPE, i int) []#TYPE {
+	a = append(a, empty#TYPECAMEL)
+	copy(a[i+1:], a[i:])
+	a[i] = what
+	return a
+}
+
+func Slice#TYPECAMELPop(a []#TYPE) (#TYPE, []#TYPE) {
+	// pop is empty
+	if len(a) < 1 {
+		return empty#TYPECAMEL, a
+	}
+
+	x := a[len(a)-1]
+	a = a[:len(a)-1]
+	return x, a
+}
+
+func Slice#TYPECAMELPush(a []#TYPE, x #TYPE) []#TYPE {
+	a = append(a, x)
+	return a
+}
