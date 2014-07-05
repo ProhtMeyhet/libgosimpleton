@@ -1,7 +1,7 @@
 libgosimpleton
 ==============
 
-libsimpleton - a minimalistic library for simpletons like me that don't
+libgosimpleton - a minimalistic library for simpletons like me that don't
 wanna reserve memory in their minds for stuff like:
 
 ```go
