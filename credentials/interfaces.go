@@ -1,28 +1,55 @@
 package libgocredentials
 
 import(
-
+	//"crypto"
 )
 
 type AuthenticationInterface interface {
-	IsAuthenticated(user, password) bool
+	IsAuthenticated(user, password string) bool
+//	IsAuthenticatedPlain(user, password string) bool
 }
 
 type CredentialsInterface interface {
-	GetHashType() uint
-	SetHashType(to uint) error
-	GetSaltType() SaltInterface
-	SetSaltType(to SaltInterface)
+	Get(user string) (bool, UserInterface)
+	New(user, password string) UserInterface
+	Add(user UserInterface) error
+	Modify(user UserInterface) error
+	Remove(user UserInterface) error
 
-	GetHash(from string) string
+	Next() (UserInterface, error)
+	Reset()
 
-	Add(user, password string) error
-	ChangePassword(user, password string) error
+	//TODO remove, was for debugging
+	Print()
 }
 
+type SalterInterface interface {
+	// if to == 0, use DEFAULT_SALT_LENGTH
+	SetSaltLength(to uint8)
+	NewSalt() (string, error)
+	GetSalt() string
+	SetSalt(to string)
+}
 
-type SaltInterface interface {
-	GetSalt(lenght int) string
+type UserInterface interface {
+	GetName() string
+	GetPassworder() PassworderInterface
+	setPassworder(to PassworderInterface)
+	ChangePassword(to string) error
+	GetPasswordHash() string
+	getIndex() uint64
+	setIndex(to uint64)
+	HasChanged() bool
+}
+
+type PassworderInterface interface {
+	TestPassword(plain string) bool
+	ChangePassword(to string) error
+	HasChanged() bool
+	GetPasswordHash() string
+	GetSalt() string
+	GetHashType() string
+	format() []byte
 }
 
 /*
