@@ -10,7 +10,7 @@ type flagConfig struct {
 	Login, Password		string
 	Mode			string
 	Timeout			int
-	List			bool
+	Verbose			bool
 	Modify, Add, Remove, Authenticate	string
 }
 
@@ -24,10 +24,13 @@ func (flags *flagConfig) parse() {
 	flag.StringVar(&flags.User, "user", "", "name of user")
 	flag.StringVar(&flags.Password, "pass", "", "password")
 	flag.IntVar(&flags.Timeout, "timeout", 120, "timeout in seconds till abort (locks are released)")
+	flag.BoolVar(&flags.Verbose, "v", false, "be verbose")
 
 	flag.Parse()
 
-	if flag.NArg() > 1 {
+	if flag.NArg() == 0 {
+		flags.Mode = MODE_LIST
+	} else if flag.NArg() > 1 {
 		switch(flag.Arg(0)) {
 		case MODE_MODIFY:
 			flags.Mode = MODE_MODIFY
@@ -35,8 +38,10 @@ func (flags *flagConfig) parse() {
 			flags.Mode = MODE_ADD
 		case MODE_REMOVE:
 			flags.Mode = MODE_REMOVE
+		case MODE_EXISTS:
+			flags.Mode = MODE_EXISTS
 		default:
-			flags.Mode = MODE_LIST
+			flags.Mode = MODE_AUTHENTICATE
 		}
 
 		if flag.NArg() > 2 {
@@ -45,8 +50,8 @@ func (flags *flagConfig) parse() {
 		} else {
 			flags.User = flag.Arg(1)
 		}
-	} else if flag.NArg() == 1{
-		flags.Mode = MODE_MODIFY
+	} else if flag.NArg() == 1 {
+		flags.Mode = MODE_AUTHENTICATE
 		flags.User = flag.Arg(0)
 	} else {
 		flags.Mode = MODE_LIST

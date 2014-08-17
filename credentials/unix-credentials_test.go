@@ -55,19 +55,18 @@ func TestCredentialsUnix(t *testing.T) {
 		t.Errorf("couldn't authenticate user %v after remove!", user3.name)
 	}
 
+
 	testNext(t, unix, user1, user3)
 	testAddUsers(t, unix, user2)
 	testNext(t, unix, user1, user3, user2)
 
 	user3.newPassword = "stiff upper lip"
-	e = user3.user.ChangePassword(user3.newPassword)
-	if e != nil {
+	if e = user3.user.ChangePassword(user3.newPassword); e != nil {
 		t.Errorf("couldn't change password for user %s! %s",
 				user3.name, e.Error())
 	}
 
-	e = unix.Modify(user3.user)
-	if e != nil {
+	if e = unix.Modify(user3.user); e != nil {
 		t.Errorf("couldn't update password for user %s! %s",
 				user3.name, e.Error())
 	}
@@ -86,6 +85,16 @@ func TestCredentialsUnix(t *testing.T) {
 	// test if rest of file was written
 	if !unix.IsAuthenticated(user2.name, user2.password) {
 		t.Errorf("couldn't authenticate user %v after modify!", user3.name)
+	}
+
+	// refresh user 2
+	var found bool
+	if found, user2.user = unix.Get(user2.name); !found {
+		t.Errorf("couldn't get user2")
+	}
+
+	if !unix.IsAuthenticated(user2.name, user2.password) {
+		t.Errorf("couldn't authenticate user %v after refresh!", user3.name)
 	}
 }
 

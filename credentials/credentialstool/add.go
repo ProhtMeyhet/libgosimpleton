@@ -28,7 +28,7 @@ func doAdd(database credentials.CredentialsInterface) {
 			os.Exit(EXIT_ADD)
 		}
 	} else {
-		fmt.Printf("user %s added!", newUser.GetName())
+		fmt.Printf("user %s added!\n", newUser.GetName())
 	}
 	ignoreSignals <- false
 }

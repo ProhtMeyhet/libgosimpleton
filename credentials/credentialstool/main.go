@@ -43,6 +43,8 @@ func doModeSelect(database credentials.CredentialsInterface) {
 		doAdd(database)
 	case MODE_REMOVE:
 		doRemove(database)
+	case MODE_EXISTS:
+		doExists(database)
 	default:
 		flags.usage()
 		os.Exit(EXIT_UNKNOWN_MODE)

@@ -1,12 +1,11 @@
 package libgocredentials
 
 import(
-	//"crypto"
+
 )
 
 type AuthenticationInterface interface {
 	IsAuthenticated(user, password string) bool
-//	IsAuthenticatedPlain(user, password string) bool
 }
 
 type CredentialsInterface interface {
@@ -18,9 +17,6 @@ type CredentialsInterface interface {
 
 	Next() (UserInterface, error)
 	Reset()
-
-	//TODO remove, was for debugging
-	Print()
 }
 
 type SalterInterface interface {
@@ -52,37 +48,6 @@ type PassworderInterface interface {
 	format() []byte
 }
 
-/*
-credentialstool list messaged.cdb
-credentialstool edit messaged.cdb [$user $user ....]
-# user: passwordhash : hashtype : salt
-# neo : asodfhasdf   : sha256 : 3498444
-# edit username press u
-# edit password press p
-# edit password and hash press h
-
-credentialstool changepw messaged.cdb $user [$user ...]
-# enter new password:
-# retype new password:
-
-credentialstool changeuser messaged.cdb $user [$user ...]
-# enter new username:
-
-credentialstool changehash messaged.cdb $user [$user ...]
-# enter new hash:
-# enter new password:
-# retype new password:
-
-credentialstool userexists messaged.cdb $user [$user ...]
-
-credentialstool testuser messaged.cdb $user [$user ...]
-# enter password:
-# hurray!
-# nay!
-
-
-credentialstool --type sqlite table@database@something.sqlite
-
-credentialstool --type mysql table@database changeuser $user
-
-*/
+type ParserInterface interface {
+	parse(from string) error
+}

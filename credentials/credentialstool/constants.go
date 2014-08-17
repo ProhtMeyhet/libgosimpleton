@@ -13,6 +13,7 @@ const (
 	MODE_MODIFY	= "modify"
 	MODE_ADD	= "add"
 	MODE_REMOVE	= "remove"
+	MODE_EXISTS	= "exists"
 	MODE_AUTHENTICATE	= "authenticate"
 
 	// generic errors pointing to mode

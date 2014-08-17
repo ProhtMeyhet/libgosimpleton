@@ -13,6 +13,12 @@ func doAuthenticate(database credentials.CredentialsInterface) {
 		os.Exit(EXIT_USER_EMPTY)
 	}
 
+	if flags.Verbose {
+		if flags.File != "" {
+			fmt.Printf("using file %s\n", flags.File)
+		}
+	}
+
 	password, e := gopass.GetPass("password for user " + flags.User + ": ")
 	if e != nil {
 		fmt.Fprintf(os.Stderr, "error getting password: %s\n", e.Error())

@@ -1,43 +1,36 @@
 package libgocredentials
 
 import(
-	//"encoding/hex"
+	"strconv"
+	"strings"
 	"code.google.com/p/go.crypto/bcrypt"
 )
 
 type Passworder struct {
-	// plain password
-	// sadly some bullshit apis require this
-	password	string
+	emptyPassword	bool
+	hasChanged	bool
 
 	// password hash with salt
 	passwordHash	string
-
-	emptyPassword	bool
+	rawHash		string
 
 	// random salt
 	salt		string
-
 	salter		SalterInterface
 
 	// hash type
 	hashType	string
-	//hashTypeCrypto	crypto.Hash
-	//hasher		hash.Hash
-
-	hasChanged	bool
+	cost		int
 }
 
 func NewPassworder() *Passworder {
-	return &Passworder{ }
+	return &Passworder{ hashType: "bcrypt" }
 }
 
-func (passworder *Passworder) GetPlainPassword() (string, error) {
-	if passworder.password == "" {
-		return "", PlainPasswordNotAvailableError
-	}
-
-	return passworder.password, nil
+func NewPassworderParse(from string) (*Passworder, error) {
+	passworder := NewPassworder()
+	e := passworder.parse(from)
+	return passworder, e
 }
 
 func (passworder *Passworder) GetSalt() string {
@@ -64,36 +57,76 @@ func (passworder *Passworder) GetSalter() SalterInterface {
 	return passworder.salter
 }
 
+func (passworder *Passworder) GetCost() int {
+	if passworder.cost == 0 {
+		passworder.cost = BCRYPT_DEFAULT_COST
+	}
+
+	return passworder.cost
+}
+
+func (passworder *Passworder) SetCost(to int) {
+	passworder.cost = to
+}
+
 func (passworder *Passworder) TestPassword(plain string) bool {
 	e := bcrypt.CompareHashAndPassword([]byte(passworder.passwordHash),
 						[]byte(passworder.salt + plain))
 	return e == nil
 }
 
-func (passworder *Passworder) ChangePassword(plain string) error {
-	passworder.hasChanged = true
-
-	salt, e := passworder.GetSalter().NewSalt()
-	if e != nil {
-		return e
+func (passworder *Passworder) ChangePassword(plain string) (e error) {
+	if plain == "" {
+		return PasswordEmptyError
 	}
 
-	salt = salt
+	salt := ""
+	if salt, e = passworder.GetSalter().NewSalt(); e != nil {
+		return
+	}
 
-	return nil
-	//passworder.passwordHash = passworder.hasher.GetHash(plain, salt)
-}
+	toHash := []byte(salt + plain)
+	byteHash, e := bcrypt.GenerateFromPassword(toHash, passworder.GetCost())
 
-func (passworder *Passworder) ChangePlainPassword(plain string) {
-	passworder.hasChanged = true
+	if e == nil {
+		passworder.passwordHash = string(byteHash)
+		passworder.hasChanged = true
+		passworder.salt = salt
+	}
 
-	passworder.password = plain
+	return
 }
 
 func (passworder *Passworder) HasChanged() bool {
 	return passworder.hasChanged
 }
 
+func (passworder *Passworder) parse(from string) (e error) {
+	splitted := strings.SplitN(from, "$", 2)
+	if splitted[0] == "2a" || splitted[0] == "" {
+		return InvalidHashFormatError
+	}
+	passworder.salt = splitted[0]
+	passworder.rawHash = splitted[1]
+
+	splitted = strings.Split(splitted[1], "$")
+	if len(splitted) != 4 || splitted[0] != "" {
+		return InvalidHashFormatError
+	}
+
+	if splitted[1] != "2a" {
+		return UnknownHashError
+	}
+
+	if passworder.cost, e = strconv.Atoi(splitted[2]); e != nil {
+		return e
+	}
+
+	passworder.passwordHash = splitted[2]
+
+	return
+}
+
 func (passworder *Passworder) format() []byte {
-	return []byte(passworder.passwordHash)
+	return []byte(passworder.salt + "$" + passworder.passwordHash)
 }

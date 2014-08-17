@@ -1,11 +1,8 @@
 package libgocredentials
 
 import(
-	"errors"
 	"strings"
 )
-
-var InvalidUnixFormatError = errors.New("Invalid Unix password Format!")
 
 type UnixPassworder struct {
 	Passworder
@@ -24,25 +21,31 @@ func NewUnixPassworderFromString(from string) *UnixPassworder {
 
 func NewUnixPassworderParse(from string) (*UnixPassworder, error) {
 	passworder := &UnixPassworder{ }
-	e := passworder.Parse(from)
+	e := passworder.parse(from)
 	return passworder, e
 }
 
 func (passworder *UnixPassworder) TestPassword(plain string) bool {
-	hash := CCrypt(plain, passworder.rawHash) // passworder.getFormatedSalt())
+	hash := CCrypt(plain, passworder.getFormatedSalt()) // passworder.getFormatedSalt())
 	return hash == passworder.rawHash
 }
 
 func (passworder *UnixPassworder) ChangePassword(to string) (e error) {
-	passworder.hasChanged = true
+	if to == "" {
+		return PasswordEmptyError
+	}
 
-	passworder.salt, e = passworder.GetSalter().NewSalt()
+	salt, e := passworder.GetSalter().NewSalt()
 	if e != nil {
 		return
 	}
 
+	passworder.hasChanged = true
+	passworder.salt = salt
+
 	if passworder.hashTypeCCrypt == "" {
-		passworder.hashTypeCCrypt = "6" //sha512
+		passworder.hashTypeCCrypt = "6"
+		passworder.hashType = "sha512"
 	}
 
 	passworder.rawHash = CCrypt(to, passworder.getFormatedSalt())
@@ -51,7 +54,7 @@ func (passworder *UnixPassworder) ChangePassword(to string) (e error) {
 }
 
 // actually too much parsing, as we only need the crypt salt, but well...
-func (passworder *UnixPassworder) Parse(from string) (e error) {
+func (passworder *UnixPassworder) parse(from string) (e error) {
 	if from == "!" || from == "*" {
 		passworder.emptyPassword = true
 		return nil
@@ -66,7 +69,7 @@ func (passworder *UnixPassworder) Parse(from string) (e error) {
 
 	passworder.hashType,
 		passworder.hashTypeCCrypt,
-		e = passworder.ParseHashType(splitted[1])
+		e = passworder.parseHashType(splitted[1])
 	if e != nil {
 		return e
 	}
@@ -77,7 +80,7 @@ func (passworder *UnixPassworder) Parse(from string) (e error) {
 	return nil
 }
 
-func (passworder *UnixPassworder) ParseHashType(from string) (string, string, error) {
+func (passworder *UnixPassworder) parseHashType(from string) (string, string, error) {
 	switch(from) {
 	case "1":
 		return "md5", "1", nil

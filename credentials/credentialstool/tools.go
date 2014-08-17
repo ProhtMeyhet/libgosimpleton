@@ -19,7 +19,7 @@ func getPassword(message, retype string) (password string) {
 			previousPassword = password
 			message = retype + message
 		} else if previousPassword == password {
-			break
+			return password
 		} else {
 			fmt.Println("passwords don't match!\n")
 			previousPassword = ""
