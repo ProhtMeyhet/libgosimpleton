@@ -12,12 +12,13 @@ type User struct {
 	index		uint64
 }
 
-func NewUser() *User {
-	return &User{ }
+func NewUser(to string) *User {
+	return &User{ name: to }
 }
 
-func CreateUser(to string) *User {
-	return &User{ name: to }
+func CreateUser(to, password string) (*User, error) {
+	user := &User{ name: to }
+	return user, user.ChangePassword(password)
 }
 
 func (user *User) GetName() string {

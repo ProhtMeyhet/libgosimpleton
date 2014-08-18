@@ -7,7 +7,9 @@ import(
 	clitable "github.com/crackcomm/go-clitable"
 )
 
-func doList(database credentials.CredentialsInterface) {
+func DoList(database credentials.CredentialsInterface) {
+	database.Reset()
+
 	table := clitable.New([]string{ "ID", "Name", "Salt", "HashType", "Hash" })
 	for i := 0;; i++{
 		row := make(map[string]interface{})
@@ -24,6 +26,8 @@ func doList(database credentials.CredentialsInterface) {
 		row["Hash"] = user.GetPassworder().GetPasswordHash()
 		table.AddRow(row)
 	}
+
+	database.Reset()
 
 	if len(table.Rows) > 0 {
 		table.Print()

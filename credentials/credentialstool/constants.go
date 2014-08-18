@@ -37,6 +37,7 @@ const (
 
 	// add errors
 	EXIT_USER_EXISTS		= 130
+	EXIT_USER_CREATE		= 131
 
 	// authenticate errors
 	EXIT_WRONG_AUTHENTICATION	= 140

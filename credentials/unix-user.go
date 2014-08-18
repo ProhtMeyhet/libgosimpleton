@@ -22,7 +22,7 @@ func NewUnixUser(username string) (user *UnixUser) {
 	return
 }
 
-func CreateUnixUser(username, password string) (user *UnixUser) {
+func CreateUnixUser(username, password string) (user *UnixUser, e error) {
 	user = &UnixUser{ }
 	user.name = username
 
@@ -34,7 +34,7 @@ func CreateUnixUser(username, password string) (user *UnixUser) {
 	user.daysPasswordChangeWarning =	"7"
 
 	user.setPassworder(NewUnixPassworder())
-	user.GetPassworder().ChangePassword(password)
+	e = user.GetPassworder().ChangePassword(password)
 
 	return
 }

@@ -4,6 +4,12 @@ import(
 	"strings"
 )
 
+//TODO 
+// blowfish (2a) is untested
+
+// reads and creates passwords used in /etc/shadow
+// only supports md5, sha256 and sha512 while parsing
+// requires salt
 type UnixPassworder struct {
 	Passworder
 
@@ -74,6 +80,7 @@ func (passworder *UnixPassworder) parse(from string) (e error) {
 		return e
 	}
 
+	// the "salt" with blowfish is the iteration count
 	passworder.salt = splitted[2]
 	passworder.passwordHash = splitted[3]
 
@@ -84,6 +91,8 @@ func (passworder *UnixPassworder) parseHashType(from string) (string, string, er
 	switch(from) {
 	case "1":
 		return "md5", "1", nil
+	case "2a":
+		return "blowfish2", "2a", nil
 	case "5":
 		return "sha256", "5", nil
 	case "6":

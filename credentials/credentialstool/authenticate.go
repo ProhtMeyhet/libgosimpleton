@@ -7,7 +7,7 @@ import(
 	"code.google.com/p/gopass"
 )
 
-func doAuthenticate(database credentials.CredentialsInterface) {
+func DoAuthenticate(database credentials.CredentialsInterface) {
 	if flags.User == "" {
 		fmt.Fprintf(os.Stderr, "user cannot be empty!\n")
 		os.Exit(EXIT_USER_EMPTY)

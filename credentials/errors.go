@@ -2,6 +2,7 @@ package libgocredentials
 
 import(
 	"errors"
+	"io"
 )
 
 var EmptyError = errors.New("empty argument!")
@@ -16,3 +17,4 @@ var FileNotExistsError = errors.New("File doesn't exists!")
 var UnknownHashError = errors.New("Hash unknown!")
 var InvalidUnixFormatError = errors.New("Invalid Unix password Format!")
 var InvalidHashFormatError = errors.New("Invalid Hash Format!")
+var EOFError = io.EOF

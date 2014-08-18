@@ -33,6 +33,10 @@ func (unix *Unix) IsAuthenticated(name, password string) bool {
 	return found && user.GetPassworder().TestPassword(password)
 }
 
+func (unix *Unix) New(user, password string) (UserInterface, error) {
+	return CreateUnixUser(user, password)
+}
+
 func (unix *Unix) Get(name string) (found bool, user UserInterface) {
 	user, e := unix.find(name)
 	return (e == nil && user != nil), user
@@ -80,9 +84,11 @@ func (unix *Unix) Next() (user UserInterface, e error) {
 }
 
 func (unix *Unix) Reset() {
-	unix.handler.Seek(0, 0)
-	unix.reader = bufio.NewReader(unix.handler)
-	unix.nextIndex = 0
+	if unix.handler != nil {
+		unix.handler.Seek(0, 0)
+		unix.reader = bufio.NewReader(unix.handler)
+		unix.nextIndex = 0
+	}
 }
 
 func (unix *Unix) Print() {
@@ -117,10 +123,6 @@ func (unix *Unix) parseLine(line []byte) (user UserInterface, e error) {
 
 	return &User{	name: splitted[0],
 			passworder: passworder }, e
-}
-
-func (unix *Unix) New(user, password string) UserInterface {
-	return CreateUnixUser(user, password)
 }
 
 // writes to a temp file and then trys to move that temp file

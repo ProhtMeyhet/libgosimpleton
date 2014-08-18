@@ -33,6 +33,13 @@ func NewPassworderParse(from string) (*Passworder, error) {
 	return passworder, e
 }
 
+func NewPassworderParsed(hash, hashType, salt string) *Passworder {
+	return &Passworder{ passwordHash: hash,
+				salt: salt,
+				hashType: hashType,
+				}
+}
+
 func (passworder *Passworder) GetSalt() string {
 	return passworder.salt
 }

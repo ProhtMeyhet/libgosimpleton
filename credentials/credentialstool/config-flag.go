@@ -40,6 +40,8 @@ func (flags *flagConfig) parse() {
 			flags.Mode = MODE_REMOVE
 		case MODE_EXISTS:
 			flags.Mode = MODE_EXISTS
+		case MODE_LIST:
+			flags.Mode = MODE_LIST
 		default:
 			flags.Mode = MODE_AUTHENTICATE
 		}

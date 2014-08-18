@@ -24,27 +24,30 @@ func main() {
 		}
 
 		database := credentials.NewUnix(flags.File)
-		doModeSelect(database)
+
+		DoModeSelect(database)
+	//case TYPE_SQL:
+
 	default:
 		flags.usage()
 		os.Exit(EXIT_UNKNOWN_TYPE)
 	}
 }
 
-func doModeSelect(database credentials.CredentialsInterface) {
+func DoModeSelect(database credentials.CredentialsInterface) {
 	switch(flags.Mode) {
 	case MODE_AUTHENTICATE:
-		doAuthenticate(database)
+		DoAuthenticate(database)
 	case MODE_LIST:
-		doList(database)
+		DoList(database)
 	case MODE_MODIFY:
-		doModify(database)
+		DoModify(database)
 	case MODE_ADD:
-		doAdd(database)
+		DoAdd(database)
 	case MODE_REMOVE:
-		doRemove(database)
+		DoRemove(database)
 	case MODE_EXISTS:
-		doExists(database)
+		DoExists(database)
 	default:
 		flags.usage()
 		os.Exit(EXIT_UNKNOWN_MODE)

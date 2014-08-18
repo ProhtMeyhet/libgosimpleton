@@ -6,7 +6,7 @@ import(
 	credentials "github.com/ProhtMeyhet/libgosimpleton/credentials"
 )
 
-func doModify(database credentials.CredentialsInterface) {
+func DoModify(database credentials.CredentialsInterface) {
 	if flags.User == "" {
 		fmt.Fprintf(os.Stderr, "user cannot be empty!\n")
 		os.Exit(EXIT_USER_EMPTY)
