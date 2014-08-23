@@ -55,7 +55,7 @@ func DoModeSelect(database credentials.CredentialsInterface) {
 }
 
 func catchSignals() {
-	signals := make(chan os.Signal, 10)
+	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGHUP, syscall.SIGINT, syscall.SIGKILL,
 			syscall.SIGQUIT, syscall.SIGTERM)
 

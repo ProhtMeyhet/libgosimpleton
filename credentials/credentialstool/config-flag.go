@@ -21,9 +21,9 @@ func newFlagConfig() *flagConfig {
 func (flags *flagConfig) parse() {
 	flag.StringVar(&flags.File, "file", "shadow", "filename")
 	flag.StringVar(&flags.Type, "type", TYPE_UNIX, "type of credentials-db")
-	flag.StringVar(&flags.User, "user", "", "name of user")
-	flag.StringVar(&flags.Password, "pass", "", "password")
-	flag.IntVar(&flags.Timeout, "timeout", 120, "timeout in seconds till abort (locks are released)")
+	//flag.StringVar(&flags.User, "user", "", "name of user")
+	//flag.StringVar(&flags.Password, "pass", "", "password")
+	//flag.IntVar(&flags.Timeout, "timeout", 120, "timeout in seconds till abort (locks are released)")
 	flag.BoolVar(&flags.Verbose, "v", false, "be verbose")
 
 	flag.Parse()

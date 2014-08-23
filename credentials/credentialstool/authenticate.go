@@ -32,7 +32,7 @@ func DoAuthenticate(database credentials.CredentialsInterface) {
 			os.Exit(EXIT_WRONG_AUTHENTICATION)
 		}
 	} else {
-		fmt.Fprintf(os.Stderr, "library error: couldn't typecast!\n")
+		fmt.Fprintf(os.Stderr, "library error: couldn't typecast to AuthenticationInterface!\n")
 		os.Exit(EXIT_LIBRARY_ERROR)
 	}
 }
