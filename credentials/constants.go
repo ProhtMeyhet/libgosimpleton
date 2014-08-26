@@ -5,7 +5,8 @@ import(
 )
 
 const(
-	DEBUG	=  false
+	// DEBUG	=  true
+	DEBUG	= false
 
 	DEFAULT_SALT_LENGTH = 12
 	BCRYPT_DEFAULT_COST = 10

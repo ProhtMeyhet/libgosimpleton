@@ -19,28 +19,18 @@ func (config *SqlConfig) init() {
 
 	if config.columnHash == "" {
 		config.columnHash = "password"
-
-		// set only if columnHash is empty
-		// allows to use a different passworder
-		if config.columnHashType == "" {
-			config.columnHashType =  "hashType"
-		}
-
-		if config.columnSalt == "" {
-			config.columnSalt = "salt"
-		}
 	}
 
 	//config.fullTable = config.base + "." + config.table
 	config.allColumns = config.columnUser + ", " +
-				config.columnHash + ", "
+				config.columnHash
 
 	if config.columnHashType != "" {
-		config.allColumns += config.columnHashType + ", "
+		config.allColumns += ", " + config.columnHashType
 	}
 
 	if config.columnSalt != "" {
-		config.allColumns += config.columnSalt
+		config.allColumns += ", " + config.columnSalt
 	}
 
 }

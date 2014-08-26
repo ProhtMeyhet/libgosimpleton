@@ -77,7 +77,7 @@ func (passworder *Passworder) SetCost(to int) {
 }
 
 func (passworder *Passworder) TestPassword(plain string) bool {
-	e := bcrypt.CompareHashAndPassword([]byte(passworder.passwordHash),
+	e := bcrypt.CompareHashAndPassword([]byte(passworder.rawHash),
 						[]byte(passworder.salt + plain))
 	return e == nil
 }
@@ -96,7 +96,7 @@ func (passworder *Passworder) ChangePassword(plain string) (e error) {
 	byteHash, e := bcrypt.GenerateFromPassword(toHash, passworder.GetCost())
 
 	if e == nil {
-		passworder.passwordHash = string(byteHash)
+		passworder.rawHash = string(byteHash)
 		passworder.hasChanged = true
 		passworder.salt = salt
 	}
@@ -135,5 +135,5 @@ func (passworder *Passworder) parse(from string) (e error) {
 }
 
 func (passworder *Passworder) format() []byte {
-	return []byte(passworder.salt + "$" + passworder.passwordHash)
+	return []byte(passworder.salt + "$" + passworder.rawHash)
 }

@@ -88,7 +88,6 @@ func genericCredentialsTest(t *testing.T, credentials CredentialsInterface) {
 	}
 
 	if !credentials.IsAuthenticated(user3.name, user3.newPassword) {
-
 		t.Errorf("couldn't authenticate with new password for user %s!",
 				user2.name)
 	}
@@ -123,7 +122,7 @@ func testAddUsers(t *testing.T, credentials CredentialsInterface, users ...*User
 		}
 
 		if !credentials.IsAuthenticated(user.name, user.password) {
-			t.Errorf("couldn't authenticate user %v!", key)
+			t.Errorf("couldn't authenticate user %v!", user.name)
 		}
 
 		if indexTesting {

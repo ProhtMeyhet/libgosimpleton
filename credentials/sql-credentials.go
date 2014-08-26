@@ -52,24 +52,39 @@ func (sql *Sql) New(user, password string) (UserInterface, error) {
 	return CreateUser(user, password)
 }
 
-func (sql *Sql) Add(user UserInterface) error {
+func (sql *Sql) Add(user UserInterface) (e error) {
 	query := "INSERT INTO "	+ sql.config.table +
 			" ( " +
 			sql.config.columnUser + ", " +
-			sql.config.columnHash + ", " +
+			sql.config.columnHash
+
+	if sql.config.columnHashType == "" {
+		query += " ) " +
+			" VALUES ( ?, ? )"
+
+		if DEBUG { fmt.Println(query) }
+
+		_, e = sql.database.Exec(query,
+						user.GetName(),
+						user.GetPassworder().format(),
+					)
+	} else {
+		query += " , " +
 			sql.config.columnHashType + ", " +
 			sql.config.columnSalt + " " +
 			" ) " +
 			" VALUES ( ?, ?, ?, ? )"
 
-	if DEBUG { fmt.Println(query) }
+		if DEBUG { fmt.Println(query) }
 
-	_, e := sql.database.Exec(query,
-					user.GetName(),
-					user.GetPassworder().GetPasswordHash(),
-					user.GetPassworder().GetHashType(),
-					user.GetPassworder().GetSalt(),
-					)
+		_, e = sql.database.Exec(query,
+						user.GetName(),
+						user.GetPassworder().GetPasswordHash(),
+						user.GetPassworder().GetHashType(),
+						user.GetPassworder().GetSalt(),
+						)
+	}
+
 	if e != nil {
 		if DEBUG { fmt.Println(e.Error()) }
 		if sql.isNoSuchTableE(e) {
@@ -87,25 +102,38 @@ func (sql *Sql) Add(user UserInterface) error {
 	return nil
 }
 
-func (sql *Sql) Modify(user UserInterface) error {
+func (sql *Sql) Modify(user UserInterface) (e error) {
 	if !user.HasChanged() {
 	    return nil
 	}
 
-	query := "UPDATE "+ sql.config.table +
-			" SET " + sql.config.columnHash + " = ?, " +
-			sql.config.columnHashType + " = ?, " +
+	query := "UPDATE " + sql.config.table +
+			" SET " + sql.config.columnHash + " = ? "
+
+	if sql.config.columnHashType == "" {
+		query += " WHERE " + sql.config.columnUser + " = ? "
+
+		if DEBUG { fmt.Println(query) }
+
+		_, e = sql.database.Exec(query,
+						user.GetPassworder().format(),
+						user.GetName(),
+					    )
+	} else {
+		query +=", " + sql.config.columnHashType + " = ? " +
 			sql.config.columnSalt + " = ? " +
 			" WHERE " + sql.config.columnUser + " = ? "
 
-	if DEBUG { fmt.Println(query) }
+		if DEBUG { fmt.Println(query) }
 
-	_, e := sql.database.Exec(query,
-					user.GetPassworder().GetPasswordHash(),
-					user.GetPassworder().GetHashType(),
-					user.GetPassworder().GetSalt(),
-					user.GetName(),
-					)
+		_, e = sql.database.Exec(query,
+						user.GetPassworder().GetPasswordHash(),
+						user.GetPassworder().GetHashType(),
+						user.GetPassworder().GetSalt(),
+						user.GetName(),
+						)
+	}
+
 	if e != nil {
 		if DEBUG { fmt.Println(e.Error()) }
 		return e
@@ -166,7 +194,6 @@ func (sql *Sql) Close() {
 
 func (sql *Sql) find(name string) (UserInterface, error) {
 	query := "SELECT " +
-			//"COUNT( " + config.columnUser + " ) AS __countcredentials8888__, " +
 			sql.config.allColumns +
 			" FROM " + sql.config.table +
 			" WHERE " + sql.config.columnUser + " = ?"
@@ -178,42 +205,58 @@ func (sql *Sql) find(name string) (UserInterface, error) {
 	    if DEBUG { fmt.Println(e.Error()) }
 	    return nil, e
 	}
+	defer rows.Close()
 
 	if !rows.Next() {
 		return nil, nil
 	}
 
-	user, e := sql.result2User(rows)
-	rows.Close()
-
-	return user, e
+	return sql.result2User(rows)
 }
 
-func (sql *Sql) result2User(rows *sqldb.Rows) (UserInterface, error) {
+func (sql *Sql) result2User(rows *sqldb.Rows) (user UserInterface, e error) {
+	var passworder PassworderInterface
+
 	var name string
 	var hash string
 	var hashType string
 	var salt string
 
-	if e := rows.Scan(&name, &hash, &hashType, &salt); e != nil {
-		if DEBUG { fmt.Println(e.Error()) }
-		return nil, e
+	if sql.config.columnHashType == "" {
+		if e = rows.Scan(&name, &hash); e != nil {
+			if DEBUG { fmt.Println(e.Error()) }
+			return nil, e
+		}
+
+		user = NewUser(name)
+		passworder, e = NewPassworderParse(hash)
+		user.setPassworder(passworder)
+		if DEBUG { fmt.Println(hash, user.GetPassworder()) }
+	} else {
+		if e = rows.Scan(&name, &hash, &hashType, &salt); e != nil {
+			if DEBUG { fmt.Println(e.Error()) }
+			return nil, e
+		}
+
+		user = NewUser(name)
+		passworder = NewPassworderParsed(hash, hashType, salt)
+		user.setPassworder(passworder)
 	}
 
-	user := NewUser(name)
-	user.passworder = NewPassworderParsed(hash, hashType, salt)
-
-	return user, nil
+	return
 }
 
 func (sql *Sql) create() (e error) {
 	query := "CREATE TABLE IF NOT EXISTS " + sql.config.table +
 			"( " +
-			sql.config.columnUser + " varchar(100) UNIQUE, " +
-			sql.config.columnHash + " varchar(100), " +
-			sql.config.columnHashType + " varchar(10), " +
-			sql.config.columnSalt + " varchar(50) " +
-			")"
+			sql.config.columnUser + " varchar(100) UNIQUE " +
+			", " + sql.config.columnHash + " varchar(100) "
+	if sql.config.columnHashType != "" {
+		query += ", " + sql.config.columnHashType + " varchar(10) " +
+			 ", " + sql.config.columnSalt + " varchar(50) "
+	}
+
+	query += ")"
 
 	if DEBUG { fmt.Println(query) }
 
