@@ -19,7 +19,7 @@ func DoExists(database credentials.CredentialsInterface) {
 	}
 
 	if flags.User == "" {
-		fmt.Fprintf(os.Stderr, "user empty!")
+		fmt.Fprintf(os.Stderr, "user empty!\n")
 		os.Exit(EXIT_USER_EMPTY)
 	}
 
