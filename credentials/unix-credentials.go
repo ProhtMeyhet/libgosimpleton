@@ -1,7 +1,6 @@
 package libgocredentials
 
 import(
-	"fmt"
 	"errors"
 	"bytes"
 	"bufio"
@@ -17,6 +16,7 @@ import(
 
 // reads and modifys /etc/shadow format
 // rewrites entire file on Add(), Modify() and Remove() calls
+// writes are done to a temp file which is then moved
 type Unix struct {
 	filename	string
 	handler		*os.File
@@ -50,9 +50,7 @@ func (unix *Unix) find(name string) (user UserInterface, e error) {
 	unix.Reset()
 	for {
 		user, e = unix.Next()
-		if e != nil {
-			break
-		} else if user.GetName() == name {
+		if e != nil || user.GetName() == name {
 			break
 		}
 	}
@@ -88,28 +86,6 @@ func (unix *Unix) Reset() {
 		unix.handler.Seek(0, 0)
 		unix.reader = bufio.NewReader(unix.handler)
 		unix.nextIndex = 0
-	}
-}
-
-func (unix *Unix) Print() {
-	if e := unix.open(); e != nil {
-		return
-	}
-
-	fmt.Println("Id -- User")
-
-	reader := bufio.NewReader(unix.handler)
-	for id := 1; ; id++ {
-		line, _, e := reader.ReadLine()
-		if e != nil {
-			break
-		}
-
-		user, e := unix.parseLine(line)
-		if e != nil {
-			break
-		}
-		fmt.Printf("%v -- %s\n", id, user.GetName())
 	}
 }
 

@@ -129,7 +129,7 @@ func (passworder *Passworder) parse(from string) (e error) {
 		return e
 	}
 
-	passworder.passwordHash = splitted[2]
+	passworder.passwordHash = splitted[3]
 
 	return
 }

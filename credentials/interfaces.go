@@ -37,6 +37,9 @@ type CredentialsInterface interface {
 
 	// must be called when finished with Next()
 	Reset()
+
+	// close it
+	Close() error
 }
 
 type SalterInterface interface {

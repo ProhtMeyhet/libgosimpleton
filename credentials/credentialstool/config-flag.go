@@ -1,14 +1,17 @@
 package main
 
 import(
+	"fmt"
 	"flag"
+	"os"
 )
 
 type flagConfig struct {
 	File, Type		string
 	User			string
-	Login, Password		string
 	Mode			string
+	Login, Password		string
+	SqlTable		string
 	Timeout			int
 	Verbose			bool
 	Modify, Add, Remove, Authenticate	string
@@ -28,6 +31,10 @@ func (flags *flagConfig) parse() {
 
 	flag.Parse()
 
+	if flags.Verbose {
+		fmt.Fprintf(os.Stderr, "number of args: %v\n", flag.NArg())
+	}
+
 	if flag.NArg() == 0 {
 		flags.Mode = MODE_LIST
 	} else if flag.NArg() > 1 {
@@ -46,9 +53,15 @@ func (flags *flagConfig) parse() {
 			flags.Mode = MODE_AUTHENTICATE
 		}
 
-		if flag.NArg() > 2 {
-			flags.File = flag.Arg(1)
-			flags.User = flag.Arg(2)
+		if flag.NArg() > 1 {
+			if flags.Type == TYPE_SQL || flags.Type == TYPE_SQLITE {
+				flags.SqlTable = flag.Arg(1)
+				flags.File = flag.Arg(2)
+				flags.User = flag.Arg(3)
+			} else {
+				flags.File = flag.Arg(1)
+				flags.User = flag.Arg(2)
+			}
 		} else {
 			flags.User = flag.Arg(1)
 		}

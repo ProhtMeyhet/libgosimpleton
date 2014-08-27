@@ -2,10 +2,12 @@ package main
 
 import(
 	"fmt"
+	sqldb "database/sql"
 	"os"
 	"os/signal"
 	"syscall"
 	credentials "github.com/ProhtMeyhet/libgosimpleton/credentials"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var flags = newFlagConfig()
@@ -16,22 +18,47 @@ func main() {
 
 	flags.parse()
 
+	var database credentials.CredentialsInterface
 	switch(flags.Type) {
 	case TYPE_UNIX:
+		if flags.Verbose {
+			fmt.Println("type is unix")
+		}
+
 		if flags.File == "" {
 			flags.usage()
 			return
 		}
 
-		database := credentials.NewUnix(flags.File)
+		database = credentials.NewUnix(flags.File)
+	case TYPE_SQLITE:
+		if flags.Verbose {
+			fmt.Printf("sqlite, file %s, table %s\n", flags.File, flags.SqlTable)
+		}
 
-		DoModeSelect(database)
-	//case TYPE_SQL:
+		if flags.File == "" {
+			fmt.Fprintf(os.Stderr, "SQL must given as table,database\n")
+			return
+		}
+		config := &credentials.SqlConfig{
+				Base: flags.File,
+				Table: flags.SqlTable,
+			    }
 
+		var e error
+		if config.Database, e = sqldb.Open("sqlite3", config.Base); e != nil {
+			fmt.Fprintf(os.Stderr, "error opening sqlite database: %s\n", e.Error())
+			os.Exit(-1)
+		}
+
+		database = credentials.NewSql(config)
 	default:
 		flags.usage()
 		os.Exit(EXIT_UNKNOWN_TYPE)
 	}
+
+	DoModeSelect(database)
+	database.Close()
 }
 
 func DoModeSelect(database credentials.CredentialsInterface) {

@@ -16,7 +16,7 @@ type Sql struct {
 func NewSql(sqlConfig *SqlConfig) *Sql {
 	sql := &Sql{ config: sqlConfig }
 	sql.config.init()
-	sql.database = sql.config.database
+	sql.database = sql.config.Database
 	return sql
 }
 
@@ -53,7 +53,7 @@ func (sql *Sql) New(user, password string) (UserInterface, error) {
 }
 
 func (sql *Sql) Add(user UserInterface) (e error) {
-	query := "INSERT INTO "	+ sql.config.table +
+	query := "INSERT INTO "	+ sql.config.Table +
 			" ( " +
 			sql.config.columnUser + ", " +
 			sql.config.columnHash
@@ -107,7 +107,7 @@ func (sql *Sql) Modify(user UserInterface) (e error) {
 	    return nil
 	}
 
-	query := "UPDATE " + sql.config.table +
+	query := "UPDATE " + sql.config.Table +
 			" SET " + sql.config.columnHash + " = ? "
 
 	if sql.config.columnHashType == "" {
@@ -143,7 +143,7 @@ func (sql *Sql) Modify(user UserInterface) (e error) {
 }
 
 func (sql *Sql) Remove(user UserInterface) error {
-	query := "DELETE FROM " + sql.config.table +
+	query := "DELETE FROM " + sql.config.Table +
 			" WHERE " + sql.config.columnUser + " = ?"
 			// " LIMIT 1" // not standard
 
@@ -160,7 +160,7 @@ func (sql *Sql) Remove(user UserInterface) error {
 func (sql *Sql) Next() (UserInterface, error) {
 	if sql.rowsNext == nil {
 		query := "SELECT " + sql.config.allColumns +
-				" FROM " + sql.config.table
+				" FROM " + sql.config.Table
 
 		if DEBUG { fmt.Println(query) }
 
@@ -188,14 +188,14 @@ func (sql *Sql) Reset() {
 	}
 }
 
-func (sql *Sql) Close() {
-	sql.database.Close()
+func (sql *Sql) Close() error {
+	return sql.database.Close()
 }
 
 func (sql *Sql) find(name string) (UserInterface, error) {
 	query := "SELECT " +
 			sql.config.allColumns +
-			" FROM " + sql.config.table +
+			" FROM " + sql.config.Table +
 			" WHERE " + sql.config.columnUser + " = ?"
 
 	if DEBUG { fmt.Println(query) }
@@ -247,7 +247,7 @@ func (sql *Sql) result2User(rows *sqldb.Rows) (user UserInterface, e error) {
 }
 
 func (sql *Sql) create() (e error) {
-	query := "CREATE TABLE IF NOT EXISTS " + sql.config.table +
+	query := "CREATE TABLE IF NOT EXISTS " + sql.config.Table +
 			"( " +
 			sql.config.columnUser + " varchar(100) UNIQUE " +
 			", " + sql.config.columnHash + " varchar(100) "

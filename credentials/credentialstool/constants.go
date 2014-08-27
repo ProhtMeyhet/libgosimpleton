@@ -7,7 +7,9 @@ import(
 const (
 	TYPE_UNIX	= "unix"
 	TYPE_SQL	= "sql"
+	TYPE_SQLITE	= "sqlite"
 
+	SQL_SPLITTER	= "#"
 
 	MODE_LIST	= "list"
 	MODE_MODIFY	= "modify"
@@ -24,6 +26,7 @@ const (
 	EXIT_REMOVE	= 103
 	EXIT_AUTHENTICATE = 104
 	EXIT_LIBRARY_ERROR = 105
+	EXIT_NOT_EXISTS	= 106
 
 	// usage error
 	EXIT_USER_EMPTY		= 110

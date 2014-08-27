@@ -6,10 +6,10 @@ import(
 
 
 type SqlConfig struct {
-	base, table, columnUser, columnHash, columnHashType, columnSalt string
+	Base, Table, columnUser, columnHash, columnHashType, columnSalt string
 	fullTable, allColumns string
 	user User
-	database *sqldb.DB
+	Database *sqldb.DB
 }
 
 func (config *SqlConfig) init() {

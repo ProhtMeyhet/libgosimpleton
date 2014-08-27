@@ -2,6 +2,7 @@ package main
 
 import(
 	"fmt"
+	"os"
 	"strconv"
 	credentials "github.com/ProhtMeyhet/libgosimpleton/credentials"
 	clitable "github.com/crackcomm/go-clitable"
@@ -32,7 +33,8 @@ func DoList(database credentials.CredentialsInterface) {
 	if len(table.Rows) > 0 {
 		table.Print()
 	} else {
-		fmt.Println("empty or non-existing file given!")
+		fmt.Fprintf(os.Stderr, "empty or non-existing file given!\n")
+		os.Exit(EXIT_NOT_EXISTS)
 	}
 }
 
