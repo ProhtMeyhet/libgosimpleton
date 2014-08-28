@@ -1,7 +1,7 @@
 package simplee
 
 import(
-	"errors"
+	"fmt"
 )
 
 type ErrorF struct {
@@ -14,16 +14,16 @@ func New(to string) *ErrorF {
 
 func (errorF *ErrorF) Format(what ...interface{}) *ErrorF {
 	if len(what) > 0 {
-		errorF.formatted = fmt.Sprintf(format, what...)
+		errorF.formatted = fmt.Sprintf(errorF.format, what...)
 	}
 
 	return errorF
 }
 
 func (errorF *ErrorF) Error() string {
-	if formatted != "" {
-		return formatted
+	if errorF.formatted != "" {
+		return errorF.formatted
 	}
 
-	return format
+	return errorF.format
 }
