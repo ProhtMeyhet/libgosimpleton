@@ -27,3 +27,11 @@ func (errorF *ErrorF) Error() string {
 
 	return errorF.format
 }
+
+func (errorF *ErrorF) IsSame(to error) bool {
+	if ef, ok := to.(*ErrorF); ok {
+		return errorF.format == ef.format
+	}
+
+	return errorF.format == to.Error()
+}
