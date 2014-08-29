@@ -28,7 +28,7 @@ func (errorF *ErrorF) Error() string {
 	return errorF.format
 }
 
-func (errorF *ErrorF) IsSame(to error) bool {
+func (errorF *ErrorF) IsEqual(to error) bool {
 	if ef, ok := to.(*ErrorF); ok {
 		return errorF.format == ef.format
 	}

@@ -15,19 +15,19 @@ func TestSimplee(t *testing.T) {
 		t.Errorf("expected '%s', got '%s'", expected, message)
 	}
 
-	if e2 := New(p1); !e.IsSame(e2) {
+	if e2 := New(p1); !e.IsEqual(e2) {
 		t.Errorf("unexpected: e != e2")
 	}
 
-	if e3 := errors.New(p1); !e.IsSame(e3) {
+	if e3 := errors.New(p1); !e.IsEqual(e3) {
 		t.Errorf("unexpected: e != e3")
 	}
 
-	if e4 := New(p2); e.IsSame(e4) {
+	if e4 := New(p2); e.IsEqual(e4) {
 		t.Errorf("unexpected: e == e4")
 	}
 
-	if e5 := errors.New(p2); e.IsSame(e5) {
+	if e5 := errors.New(p2); e.IsEqual(e5) {
 		t.Errorf("unexpected: e == e5")
 	}
 }
