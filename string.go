@@ -166,6 +166,7 @@ func GetLongestStringLength(s ...string) (max, index int) {
 			index = i
 		}
 	}
+
 	return
 }
 
@@ -177,5 +178,42 @@ func GetShortestStringLength(s ...string) (min, index int) {
 			index = i
 		}
 	}
+
+	return
+}
+
+// converts non-nested string slice to byte slice
+func StringSliceToByteSlice(sc ...string) (b [][]byte) {
+	b = make([][]byte, len(sc))
+	for key, s := range sc {
+		b[key] = make([]byte, len(s))
+		b[key] = []byte(s)
+	}
+
+	return
+}
+
+// get the sum of strings in a non-nested string slice
+func GetSumOfStrings(of ...string) uint64 {
+	return getSumOfStrings(false, of...)
+}
+
+// get the sum of strings in a non-nested string slice
+// trims first and last element
+func GetSumOfStringsTrimOuter(of ...string) uint64 {
+	return getSumOfStrings(true, of...)
+}
+
+// get the sum of strings in a non-nested string slice
+// if trime == true, trim first and last element
+func getSumOfStrings(trim bool, of ...string) (sum uint64) {
+	for key, s := range of {
+		if trim && (key == 0 || key == len(of) - 1) {
+			s = strings.TrimSpace(s)
+		}
+
+		sum += uint64(Length(s))
+	}
+
 	return
 }

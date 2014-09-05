@@ -29,7 +29,7 @@ return e.Format("crap")
 
 CREDENTIALS
 -----------
-credentials library and credentialstool for editing user and password infrastructure. currently unix (/etc/shadow) and sql is implemented.
+credentials library (and credentialstool) for editing user and password infrastructure. currently unix (/etc/shadow) and sql is implemented (not fully in credentialstool).
 
 
 LICENCE

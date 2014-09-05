@@ -6,6 +6,8 @@ import(
 	"code.google.com/p/go.crypto/bcrypt"
 )
 
+// default Passworder
+// uses Bcrypt, cant do nothing else
 type Passworder struct {
 	emptyPassword	bool
 	hasChanged	bool

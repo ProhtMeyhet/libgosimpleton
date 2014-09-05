@@ -3,10 +3,8 @@ package libgocredentials
 import(
 	"fmt"
 	sqldb "database/sql"
-	 _ "github.com/mattn/go-sqlite3"
 )
 
-//TODO allow for not using columns hashType and salt
 type Sql struct {
 	config		*SqlConfig
 	database	*sqldb.DB

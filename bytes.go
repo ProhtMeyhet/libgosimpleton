@@ -16,13 +16,13 @@ func GetBytes(b []byte, i, j int) []byte {
 	}
 
 	if len(b) > 0 {
-
 		if i >= 0 && j > 0 && j < len(b) {
 			return b[i:j]
 		} else if j > len(b) {
 			return b[i:]
 		}
 	}
+
 	return b
 }
 
@@ -30,6 +30,7 @@ func GetLastByte(b []byte) []byte {
 	if len(b) > 0 {
 		return b[len(b)-1:len(b)]
 	}
+
 	return b
 }
 
@@ -39,6 +40,7 @@ func GetLastBytes(b []byte, n int) []byte {
 	} else if len(b) > 0 {
 		return b
 	}
+
 	return b
 }
 
@@ -185,5 +187,40 @@ func GetShortestByteLength(b ...[]byte) (min, index int) {
 			index = i
 		}
 	}
+	return
+}
+
+// converts []byte slice to string slice
+func ByteSliceToStringSlice(bc ...[]byte) (s []string) {
+	s = make([]string, len(bc))
+	for key, b := range bc {
+		s[key] = string(b)
+	}
+
+	return
+}
+
+// get the sum of bytes in a non-nested []byte slice
+func GetSumOfBytes(of ...[]byte) uint64 {
+	return getSumOfBytes(false, of...)
+}
+
+// get the sum of bytes in a non-nested byte slice
+// trims first and last element
+func GetSumOfBytesTrimOuter(of ...[]byte) uint64 {
+	return getSumOfBytes(true, of...)
+}
+
+// get the sum of bytes in a non-nested []byte slice
+// if trim == true, trim first and last element
+func getSumOfBytes(trim bool, of ...[]byte) (sum uint64) {
+	for key, s := range of {
+		if trim && (key == 0 || key == len(of) - 1) {
+			s = bytes.TrimSpace(s)
+		}
+
+		sum += uint64(len(s))
+	}
+
 	return
 }

@@ -9,7 +9,7 @@ import(
 	//"time"
 )
 
-func TestCredentialsUnix(t *testing.T) {
+func TestUnix(t *testing.T) {
 	tempFile, e := ioutil.TempFile(os.TempDir(), "testing")
 	if e != nil {
 		t.Errorf("couldn't create temp file! %s", e.Error())

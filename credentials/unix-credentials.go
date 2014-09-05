@@ -157,19 +157,18 @@ func (unix *Unix) skipOneCopyRest(temp *os.File) (e error) {
 	var line []byte
 	for {
 		line, e = reader.ReadBytes('\n')
-		if e != nil {
+		if e == io.EOF {
+			// EOF is no error
+			e = nil
 			break
+		} else if e != nil {
+			goto cleanup
 		}
 
 		_, e = temp.Write(line)
 		if e != nil {
 			goto cleanup
 		}
-	}
-
-	if e == io.EOF {
-		// EOF is no error
-		e = nil
 	}
 
 	e = os.Rename(temp.Name(), unix.filename)
@@ -208,6 +207,7 @@ func (unix *Unix) copyTillUser(user UserInterface) (temp *os.File, e error) {
 		return nil, EmptyError
 	}
 
+	// TODO till locking is done, reread user
 	user, e = unix.find(user.GetName())
 	if e != nil {
 		return nil, UserDoesntExistError
