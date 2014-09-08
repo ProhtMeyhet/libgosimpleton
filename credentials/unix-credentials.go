@@ -1,7 +1,6 @@
 package libgocredentials
 
 import(
-	"errors"
 	"bytes"
 	"bufio"
 	"io"
@@ -9,6 +8,7 @@ import(
 	"os"
 	"path"
 	"strings"
+	//"time"
 )
 
 //TODO
@@ -22,6 +22,7 @@ type Unix struct {
 	handler		*os.File
 	reader		*bufio.Reader
 	nextIndex	uint64
+	// modificationTime time.Time
 }
 
 func NewUnix(newFilename string) *Unix {
@@ -42,42 +43,8 @@ func (unix *Unix) Get(name string) (found bool, user UserInterface) {
 	return (e == nil && user != nil), user
 }
 
-func (unix *Unix) find(name string) (user UserInterface, e error) {
-	if e = unix.open(); e != nil {
-		return
-	}
-
-	unix.Reset()
-	for {
-		user, e = unix.Next()
-		if e != nil || user.GetName() == name {
-			break
-		}
-	}
-
-	return
-}
-
 func (unix *Unix) Next() (user UserInterface, e error) {
-	if e = unix.open(); e != nil {
-		return
-	}
-
-	if unix.reader == nil {
-		unix.reader = bufio.NewReader(unix.handler)
-	}
-
-	var line []byte
-	line, e = unix.reader.ReadBytes('\n')
-	if e != nil {
-		return
-	}
-
-	user, e = unix.parseLine(line)
-
-	user.setIndex(unix.nextIndex)
-	unix.nextIndex += uint64(len(line))
-
+	user, e, _, _ = unix.next(false)
 	return
 }
 
@@ -89,29 +56,13 @@ func (unix *Unix) Reset() {
 	}
 }
 
-func (unix *Unix) parseLine(line []byte) (user UserInterface, e error) {
-	splitted := strings.Split(string(line), ":")
-	if len(splitted) != 9 {
-		e = errors.New("Unexpected file format!")
-	}
-
-	passworder, e := NewUnixPassworderParse(splitted[1])
-
-	return &User{	name: splitted[0],
-			passworder: passworder }, e
-}
-
 // writes to a temp file and then trys to move that temp file
 func (unix *Unix) Add(user UserInterface) (e error) {
-	if exists, _ := unix.Get(user.GetName()); exists {
-		return UserExistsError
-	}
+	if exists, _ := unix.Get(user.GetName()); exists { return UserExistsError }
 
 	var index int64
 	temp, e := ioutil.TempFile(path.Dir(unix.filename), path.Base(unix.filename))
-	if e != nil {
-		goto cleanup
-	}
+	if e != nil { goto cleanup }
 	defer temp.Close()
 
 	e = unix.open()
@@ -119,125 +70,161 @@ func (unix *Unix) Add(user UserInterface) (e error) {
 	if e == nil {
 		unix.handler.Seek(0, 0)
 		index, e = io.Copy(temp, unix.handler)
-		if e != nil {
-			goto cleanup
-		}
+		if e != nil { goto cleanup }
 	}
 	defer unix.Close()
 
-	temp.Write(unix.format(user))
-
-	e = os.Rename(temp.Name(), unix.filename)
-
-cleanup:
-	if e != nil {
-		os.Remove(temp.Name())
-	}
+	if _, e = temp.Write(unix.format(user)); e != nil { goto cleanup }
 
 	user.setIndex(uint64(index))
 
-	return
+cleanup:
+	if e != nil { os.Remove(temp.Name()) }
+
+	return unix.commit(temp)
 }
 
 func (unix *Unix) Remove(user UserInterface) (e error) {
 	temp, e := unix.copyTillUser(user)
-	if e != nil {
-		return e
-	}
+	if e != nil { goto cleanup }
 	defer unix.Close()
+	defer unix.Reset()
 
-	return unix.skipOneCopyRest(temp)
-}
-
-func (unix *Unix) skipOneCopyRest(temp *os.File) (e error) {
-	reader := bufio.NewReader(unix.handler)
-	// advance pointer
-	reader.ReadBytes('\n')
-
-	var line []byte
-	for {
-		line, e = reader.ReadBytes('\n')
-		if e == io.EOF {
-			// EOF is no error
-			e = nil
-			break
-		} else if e != nil {
-			goto cleanup
-		}
-
-		_, e = temp.Write(line)
-		if e != nil {
-			goto cleanup
-		}
-	}
-
-	e = os.Rename(temp.Name(), unix.filename)
+	if e = unix.copyRest(temp); e != nil { goto cleanup }
 
 cleanup:
-	if e != nil {
-		temp.Close()
-		os.Remove(temp.Name())
-	}
+	if e != nil { os.Remove(temp.Name()) }
 
-	return
+	return unix.commit(temp)
 }
 
 func (unix *Unix) Modify(user UserInterface) (e error) {
-	if !user.HasChanged() {
-		// this is not an error
-		return
-	}
+	// this is not an error
+	if !user.HasChanged() { return }
 
 	temp, e := unix.copyTillUser(user)
-	if e != nil {
-		return e
-	}
+	if e != nil { return e }
 	defer unix.Close()
+	defer unix.Reset()
 
 	_, e = temp.Write(unix.format(user))
-	if e != nil {
-		return
-	}
+	if e != nil { goto cleanup }
 
-	return unix.skipOneCopyRest(temp)
-}
-
-func (unix *Unix) copyTillUser(user UserInterface) (temp *os.File, e error) {
-	if user == nil {
-		return nil, EmptyError
-	}
-
-	// TODO till locking is done, reread user
-	user, e = unix.find(user.GetName())
-	if e != nil {
-		return nil, UserDoesntExistError
-	}
-
-	temp, e = ioutil.TempFile(path.Dir(unix.filename), path.Base(unix.filename))
-	if e != nil {
-		goto cleanup
-	}
-
-	e = unix.open()
-	if e != nil {
-		return nil, FileNotExistsError
-	}
-
-	unix.handler.Seek(0, 0)
-	_, e = io.CopyN(temp, unix.handler, int64(user.getIndex()))
-	if e != nil {
-		goto cleanup
-	}
+	if e = unix.copyRest(temp); e != nil { goto cleanup }
 
 cleanup:
+	if e != nil { os.Remove(temp.Name()) }
+
+
+	return unix.commit(temp)
+}
+
+// TODO locking should be implemented here with modification time check
+func (unix *Unix) commit(temp *os.File) (e error) {
+	// this is not an error
+	if unix.handler == nil { return	}
+
+	/*
+	check modification time
+	if modificationTime, e := unix.handler.Stat().ModTime(); e != nil {
+		goto cleanup
+	}
+	if modificationTime != unix.modificationTime { goto cleanup }
+	*/
+
+	e = os.Rename(temp.Name(), unix.handler.Name());
+
+//cleanup:
 	if e != nil {
 		os.Remove(temp.Name())
-		return
+		return TransactionAbortedError
 	}
 
 	return
 }
 
+// copys until a user is found
+func (unix *Unix) copyTillUser(user UserInterface) (temp *os.File, e error) {
+	if user == nil { return nil, EmptyError }
+
+	temp, e = ioutil.TempFile(path.Dir(unix.filename), path.Base(unix.filename))
+	if e != nil { return }
+
+	return temp, unix.doCopy(temp, user)
+}
+
+// copys whats left
+// io.copy not used, because it copied the whole file again
+// i havn't got the time to debug that, probably some pointer issue
+func (unix *Unix) copyRest(temp *os.File) (e error) {
+	return unix.doCopy(temp, nil)
+}
+
+// actual copy function
+// if tillUser is nil, it copies everything
+func (unix *Unix) doCopy(temp *os.File, tillUser UserInterface) (e error) {
+	var found bool
+
+	e = unix.open()
+	if e != nil { goto cleanup }
+
+	if tillUser == nil {
+		for {
+			_, e, _, line := unix.next(true)
+			if e != nil {  break }
+
+			temp.Write(line)
+		}
+	} else {
+		for {
+			_, e, name, line := unix.next(true)
+			if e != nil {
+				break
+			} else if name == tillUser.GetName() {
+				found = true
+				break
+			}
+
+			temp.Write(line)
+		}
+
+		if !found { e = UserDoesntExistError }
+	}
+
+cleanup:
+	if e != nil { return os.Remove(temp.Name()) }
+
+	return
+}
+
+// parses only the name from the format
+func (unix *Unix) parseName(line []byte) (name string, e error) {
+	splitted := strings.SplitN(string(line), ":", 2)
+
+	// dont return yet, maybe the caller can debug better
+	// even with the garbled format
+	if len(splitted) != 2 { e = UnexpectedFileFormatError }
+
+	name = splitted[0]
+
+	return
+}
+
+// parse the whole line and return UserInterface
+func (unix *Unix) parseLine(line []byte) (user UserInterface, e error) {
+	splitted := strings.Split(string(line), ":")
+
+	// dont return yet, maybe the caller can debug better
+	// even with the garbled format
+	if len(splitted) != 9 { e = UnexpectedFileFormatError }
+
+	passworder, e := NewUnixPassworderParse(splitted[1])
+
+	return &User{	name: splitted[0],
+			passworder: passworder }, e
+}
+
+// format a user
 func (unix *Unix) format(user UserInterface) (line []byte) {
 	buffer := bytes.NewBuffer(line)
 	buffer.WriteString(user.GetName())
@@ -259,15 +246,59 @@ func (unix *Unix) format(user UserInterface) (line []byte) {
 		buffer.WriteString(":")
 		buffer.WriteString(unixUser.reserved)
 	} else {
-		for i := 3; i <=7; i++ {
+		for i := 3; i <= 7; i++ {
 			buffer.WriteString(":")
 		}
 	}
+
 	buffer.WriteString("\n")
 
 	return buffer.Bytes()
 }
 
+// read next user
+// if onlyName == true the user will be parsed into
+// UserInterface. name return is then nil!
+//
+// if onlyName == true the user won't be parsed. user return is then nil!
+func (unix *Unix) next(onlyName bool) (user UserInterface, e error, name string,
+					line []byte) {
+	if e = unix.open(); e != nil { return }
+
+	if unix.reader == nil {
+		unix.reader = bufio.NewReader(unix.handler)
+	}
+
+	line, e = unix.reader.ReadBytes('\n')
+	if e != nil { return }
+
+	if onlyName {
+		name, e = unix.parseName(line)
+	} else {
+		user, e = unix.parseLine(line)
+		user.setIndex(unix.nextIndex)
+		unix.nextIndex += uint64(len(line))
+	}
+
+	return
+}
+
+// find a user in file
+func (unix *Unix) find(name string) (user UserInterface, e error) {
+	if e = unix.open(); e != nil { return }
+
+	unix.Reset()
+	for {
+		user, e = unix.Next()
+		if e != nil || user.GetName() == name {
+			break
+		}
+	}
+
+	return
+}
+
+// open
 func (unix *Unix) open() (e error) {
 	if unix.handler == nil {
 		var handler *os.File

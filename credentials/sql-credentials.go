@@ -83,6 +83,7 @@ func (sql *Sql) Add(user UserInterface) (e error) {
 						)
 	}
 
+	// try to create the tables
 	if e != nil {
 		if DEBUG { fmt.Println(e.Error()) }
 		if sql.isNoSuchTableE(e) {
@@ -132,25 +133,20 @@ func (sql *Sql) Modify(user UserInterface) (e error) {
 						)
 	}
 
-	if e != nil {
-		if DEBUG { fmt.Println(e.Error()) }
-		return e
-	}
+	if DEBUG { fmt.Println(e) }
+	if e != nil {  return e }
 
 	return nil
 }
 
-func (sql *Sql) Remove(user UserInterface) error {
+func (sql *Sql) Remove(user UserInterface) (e error) {
 	query := "DELETE FROM " + sql.config.Table +
 			" WHERE " + sql.config.columnUser + " = ?"
 			// " LIMIT 1" // not standard
 
 	if DEBUG { fmt.Println(query) }
 
-	if _, e := sql.database.Exec(query, user.GetName()); e != nil {
-		if DEBUG { fmt.Println(e.Error()) }
-		return e
-	}
+	if _, e = sql.database.Exec(query, user.GetName()); e != nil { return }
 
 	return nil
 }
@@ -163,10 +159,9 @@ func (sql *Sql) Next() (UserInterface, error) {
 		if DEBUG { fmt.Println(query) }
 
 		rows, e := sql.database.Query(query)
-		if e != nil {
-			if DEBUG { fmt.Println(e.Error()) }
-			return nil, e
-		}
+
+		if DEBUG { fmt.Println(e) }
+		if e != nil { return nil, e }
 
 		sql.rowsNext = rows
 	}
@@ -199,11 +194,10 @@ func (sql *Sql) find(name string) (UserInterface, error) {
 	if DEBUG { fmt.Println(query) }
 
 	rows, e := sql.database.Query(query, name)
-	if e != nil {
-	    if DEBUG { fmt.Println(e.Error()) }
-	    return nil, e
-	}
 	defer rows.Close()
+
+	if DEBUG { fmt.Println(e) }
+	if e != nil { return nil, e }
 
 	if !rows.Next() {
 		return nil, nil
@@ -217,22 +211,18 @@ func (sql *Sql) result2User(rows *sqldb.Rows) (user UserInterface, e error) {
 
 	var name string
 	var hash string
-	var hashType string
-	var salt string
 
 	if sql.config.columnHashType == "" {
-		if e = rows.Scan(&name, &hash); e != nil {
-			if DEBUG { fmt.Println(e.Error()) }
-			return nil, e
-		}
+		if e = rows.Scan(&name, &hash); e != nil { return nil, e }
 
 		user = NewUser(name)
 		passworder, e = NewPassworderParse(hash)
 		user.setPassworder(passworder)
 		if DEBUG { fmt.Println(hash, user.GetPassworder()) }
 	} else {
+		var hashType string
+		var salt string
 		if e = rows.Scan(&name, &hash, &hashType, &salt); e != nil {
-			if DEBUG { fmt.Println(e.Error()) }
 			return nil, e
 		}
 
@@ -258,17 +248,14 @@ func (sql *Sql) create() (e error) {
 
 	if DEBUG { fmt.Println(query) }
 
-	if _, e := sql.database.Exec(query); e != nil {
-		if DEBUG { fmt.Println(e.Error()) }
-		return e
-	}
+	if _, e := sql.database.Exec(query); e != nil { return e }
 
 	return nil
 }
 
 func (sql *Sql) isNoSuchTableE(e error) bool {
 	if e == nil {
-	    return false
+		return false
 	}
 
 	message := e.Error()

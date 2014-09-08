@@ -17,4 +17,7 @@ var FileNotExistsError = errors.New("File doesn't exists!")
 var UnknownHashError = errors.New("Hash unknown!")
 var InvalidUnixFormatError = errors.New("Invalid Unix password Format!")
 var InvalidHashFormatError = errors.New("Invalid Hash Format!")
+var TransactionAbortedError = errors.New("Transaction aborted!")
 var EOFError = io.EOF
+
+var UnexpectedFileFormatError = errors.New("Unexpected file format!")
