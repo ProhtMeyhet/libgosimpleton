@@ -1,0 +1,14 @@
+
+// give back a channel in which to push items of a list of #TYPE in a separate goroutine
+func #TYPECAMELListToChannel(list []#TYPE) <-chan #TYPE {
+	// be lenient on memory
+	size := len(list); if size > 50 { size = 50 }
+	channel := make(chan #TYPE, size)
+	go func() {
+		for _, item := range list {
+			channel <-item
+		}
+		close(channel)
+	}()
+	return channel
+}
