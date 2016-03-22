@@ -1,29 +1,8 @@
 package logging
 
 import(
-	"errors"
 	"strings"
 )
-
-// inject config into logger
-func inject(log logInterface, config LogConfigInterface) (e error) {
-	if logConfig, ok := log.(LogInjectionInterface); ok {
-		logConfig.SetLogConfig(config)
-	}
-
-	if fileLogger, ok := log.(FileLogInjectionInterface); ok {
-		if fileConfig, ok := config.(FileLogConfigInterface); ok {
-			fileLogger.SetPath(fileConfig.GetPath())
-		} else {
-			return errors.New("File logger selected, but no path given!")
-		}
-	}
-
-	log.SetName(config.GetName())
-	log.SetLevel(config.GetLevel())
-
-	return nil
-}
 
 func IsLevel(to uint8) bool {
 	return to > 0 && to <= EVERYTHING

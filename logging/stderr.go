@@ -13,10 +13,9 @@ type stderrLogger struct {
 	abstractLogger
 }
 
-func NewStderrLogger(config LogConfigInterface) logInterface {
-	stderr := &stderrLogger{}
-	inject(stderr, config)
-	return stderr
+func NewStderrLogger(config LogConfigInterface) (stderr *stderrLogger) {
+	stderr = &stderrLogger{}
+	return
 }
 
 func (err *stderrLogger) Log(level uint8, message string) {

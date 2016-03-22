@@ -4,24 +4,23 @@ import(
 	"errors"
 )
 
-func getLogger(from string, config LogConfigInterface) (newLogger logInterface,
-								e error) {
+func getLogger(from Type, config LogConfigInterface) (newLogger logInterface, e error) {
 	switch(from) {
-	case "syslog":
+	case SYS:
 		newLogger = NewSyslogLogger(config)
-	// case "union"
+	// case UNION:
 	//	logger = NewUnionLogger()
-	case "buffer":
-		newLogger = NewBufferLogger(config)
-	case "stderr":
+	case BUFFER:
+		newLogger = newBufferLogger(config)
+	case STDERR:
 		newLogger = NewStderrLogger(config)
-	case "null":
+	case NULL:
 		newLogger = NewNullLogger(config)
-	case "file":
+	case FILE:
 		newLogger = NewFileLogger(config)
 	default:
-		return newLogger, errors.New("Unknown logger: " + from)
+		e = errors.New("Unknown logger!")
 	}
 
-	return newLogger, nil
+	return
 }

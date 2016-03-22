@@ -16,17 +16,14 @@ type bufferLogger struct {
 	messages []string
 }
 
-func NewBufferLogger(config LogConfigInterface) *bufferLogger {
-	buffer := &bufferLogger{}
-	inject(buffer, config)
-	return buffer
-}
-
-func (buffer *bufferLogger) Open() (e error) {
-	buffer.levels = make([]uint8, 20)
-	buffer.messages = make([]string, 20)
+// don't export a buffer logger as it is useless outside this package
+func newBufferLogger(config LogConfigInterface) (buffer *bufferLogger) {
+	buffer = &bufferLogger{}
+	buffer.initialise(config)
 	return
 }
+
+func (buffer *bufferLogger) Open() (e error) { return }
 
 func (buffer *bufferLogger) Log(level uint8, message string) {
 	buffer.levels = append(buffer.levels, level)
@@ -40,6 +37,8 @@ func (buffer *bufferLogger) Close() (e error) {
 }
 
 func (buffer *bufferLogger) Flush(to logInterface) (e error) {
+	close(logging)
+
 	for k, _ := range buffer.messages {
 		to.Log(buffer.levels[k], buffer.messages[k])
 	}

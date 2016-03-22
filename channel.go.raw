@@ -12,3 +12,11 @@ func #TYPECAMELListToChannel(list []#TYPE) <-chan #TYPE {
 	}()
 	return channel
 }
+
+// read from a channel, wait till its closed and return all read items
+func #TYPECAMELChannelToList(channel <-chan #TYPE) (list []#TYPE) {
+	for item := range channel {
+		list = append(list, item)
+	}
+	return
+}

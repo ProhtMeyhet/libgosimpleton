@@ -9,27 +9,12 @@ type LogConfigInterface interface {
 	// name of you program
 	GetName() string
 	// main log type (null, stderr, file, syslog ...)
-	GetType() string
+	GetType() Type
 	// additional loggers
 	//GetSecondaryTypes() []string
 	// verbosity, see tools.go:LevelToString
 	GetLevel() uint8
-}
-
-// inject config into loggers
-type LogInjectionInterface interface {
-	// satisfy this interface to get above config
-	SetLogConfig(logConfig LogConfigInterface)
-}
-
-type FileLogConfigInterface interface {
-	LogConfigInterface
-	// path to log file if file logger used
-	GetPath() string
-}
-
-type FileLogInjectionInterface interface {
-	SetPath(path string)
+	SetLevel(to uint8)
 }
 
 // union logger can log to more then one logger
@@ -66,4 +51,6 @@ type logInterface interface {
 
 	SetName(name string)
 	GetName() string
+
+	run()
 }

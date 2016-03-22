@@ -9,10 +9,10 @@ type syslogLogger struct {
 	logger *syslog.Writer
 }
 
-func NewSyslogLogger(config LogConfigInterface) *syslogLogger {
-	sys := &syslogLogger{}
-	inject(sys, config)
-	return sys
+func NewSyslogLogger(config LogConfigInterface) (sys *syslogLogger) {
+	sys = &syslogLogger{}
+	sys.initialise(config)
+	return
 }
 
 func (sys *syslogLogger) Open() (e error) {

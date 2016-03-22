@@ -14,17 +14,10 @@ type nullLogger struct {
 }
 
 func NewNullLogger(config LogConfigInterface) logInterface {
-	null := &nullLogger{}
-	inject(null, config)
-	return null
+	return &nullLogger{}
 }
 
-func (null *nullLogger) Open() (e error) {
-	return
-}
-
+func (null *nullLogger) Open() (e error) { return }
 func (null *nullLogger) Log(level uint8, message string) {}
-
-func (null *nullLogger) Close() (e error) {
-	return
-}
+func (null *nullLogger) Close() (e error) { return }
+func (null *nullLogger) run() {} // overwrite as it is uneeded to run a goroutine for this

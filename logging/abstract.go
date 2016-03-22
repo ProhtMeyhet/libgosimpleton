@@ -1,19 +1,25 @@
 package logging
 
 import(
+	"fmt"
 	"time"
 )
 
 type abstractLogger struct{
 	name string
-	logLevel uint8
 	lastE error
+	interfaceConfig LogConfigInterface
+}
+
+func (logger *abstractLogger) initialise(config LogConfigInterface) {
+	logger.interfaceConfig = config
 }
 
 func (logger *abstractLogger) ShouldLog(level uint8) bool {
-	return IsLevel(level) && level == level & logger.logLevel
+	return level == level & logger.interfaceConfig.GetLevel()
 }
 
+// DEPRECATED; use config.EHandler
 func (logger *abstractLogger) HasError() (bool, error) {
 	if logger.lastE != nil {
 		return true, logger.lastE
@@ -31,11 +37,11 @@ func (logger *abstractLogger) GetName() string {
 }
 
 func (logger *abstractLogger) SetLevel(to uint8) {
-	logger.logLevel = to
+	logger.interfaceConfig.SetLevel(to)
 }
 
 func (logger *abstractLogger) GetLevel() uint8 {
-	return logger.logLevel
+	return logger.interfaceConfig.GetLevel()
 }
 
 func (logger *abstractLogger) NowClock() string {
@@ -44,4 +50,19 @@ func (logger *abstractLogger) NowClock() string {
 
 func (logger *abstractLogger) ClockTime(t time.Time) string {
 	return t.Format(TIME_FORMAT)
+}
+
+/* go */ func (abstract *abstractLogger) run() {
+infinite:
+	for {
+		select {
+		case logEntry, ok := <-logging:
+			if !ok { break infinite }
+			formatted := ""
+			for _, message := range logEntry.message {
+				formatted = fmt.Sprintf(logEntry.format, message)
+			}
+			logger.Log(logEntry.level, formatted)
+		}
+	}
 }

@@ -7,37 +7,40 @@ import(
 )
 
 // take a wild guess, what this logger logs to
-
 type fileLogger struct {
 	abstractLogger
 	logger *log.Logger
-	path string
+	config *DefaultFileConfig
 	logFile *os.File
 }
 
-func NewFileLogger(config LogConfigInterface) *fileLogger {
-	file := &fileLogger{}
-	inject(file, config)
-	return file
+func NewFileLogger(config LogConfigInterface) (file *fileLogger) {
+	file = &fileLogger{}
+	file.initialise(config)
+	return
 }
 
 func (file *fileLogger) Log(level uint8, message string) {
 	if file.ShouldLog(level) {
-		file.logger.Printf(": %v [%v]: %v", file.NowClock(),
-			LevelToString(level), message)
+		file.logger.Printf(": %v [%v]: %v", file.NowClock(), LevelToString(level), message)
 	}
 }
 
 func (file *fileLogger) Open() (e error) {
-	file.logFile, e = file.openLogFile(file.path)
-	if e != nil {
-		return
+	if fileConfig, ok := file.interfaceConfig.(*DefaultFileConfig); !ok {
+		e = errors.New("config is not DefaultFileConfig!")
+		goto out
+	} else {
+		file.config = fileConfig
 	}
 
+	file.logFile, e = file.openLogFile(file.config.Path); if e != nil { goto out }
 	file.logger = log.New(file.logFile, file.name, 0)
 
-	// test if we can write
-	e = file.logger.Output(10,": " + file.NowClock() + " Logging started")
+	// test if writing is possible
+	e = file.logger.Output(10, ": " + file.NowClock() + " Logging started")
+
+out:
 	return
 }
 
@@ -45,11 +48,8 @@ func (file *fileLogger) Close() error {
 	if file.logFile != nil {
 		return file.logFile.Close()
 	}
-	return nil
-}
 
-func (file *fileLogger) SetPath(path string) {
-	file.path = path
+	return nil
 }
 
 func (file *fileLogger) openLogFile(logFileName string) (logFile *os.File, e error) {
