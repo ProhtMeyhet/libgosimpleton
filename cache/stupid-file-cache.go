@@ -43,7 +43,7 @@ type StupidFileCache struct {
 	filesMax		uint
 
 	// at least free this amount fifo files from cache
-	freeFilesMaxThreshold
+	freeFilesMaxThreshold	uint
 
 	itemChannel		chan *CacheItem
 	numberOfManagerThreads	uint8
@@ -75,7 +75,7 @@ func (cache *StupidFileCache) init() {
 	cache.cache = make(map[string][]byte, 20)
 	cache.itemChannel = make(chan *CacheItem, 5)
 	cache.filesMax = 100
-	cache.freeFilesMaxThreashold = cache.cacheMaxFiles / 4
+	cache.freeFilesMaxThreshold = cache.filesMax / 4
 
 	if cache.numberOfManagerThreads == 0 {
 		cache.numberOfManagerThreads = 2
@@ -133,8 +133,8 @@ out:
 }
 
 func (cache *StupidFileCache) testCacheSize(dontdelete string) {
-	if len(cache.cache) > cache.filesMax {
-		cache.Lock(); i := 0
+	if uint(len(cache.cache)) > cache.filesMax {
+		cache.Lock(); i := uint(0)
 		if simpleton.DEBUG { logging.Log(logging.INFO, "cache: have to free! hit filesMax!") }
 		for key, _ := range cache.cache {
 			if i == cache.freeFilesMaxThreshold { break }

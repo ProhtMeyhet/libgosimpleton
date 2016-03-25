@@ -21,7 +21,6 @@ type ObservingFileCache struct {
 	StupidFileCache
 
 	stop chan bool
-	stopWatch chan string
 }
 
 func NewObservingFileCache() (cache *ObservingFileCache) {
@@ -82,15 +81,12 @@ infinite:
 		case e := <-watcher.Error:
 			logging.ErrorFormat("inotify: %v", e.Error())
 			return
-		case watchedFilename, ok := <-cache.stopWatch
-			if !ok { break infinite }
-			if watchedFilename == filename {
-				
-			}
+		case _, stop := <-cache.stop:
+			if stop { break infinite }
 		}
 	}
 }
 
 func (cache *ObservingFileCache) Close() {
-	close(cache.stopWatch)
+	close(cache.stop)
 }
