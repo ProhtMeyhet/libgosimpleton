@@ -16,7 +16,7 @@ import(
 func TestMain(m *testing.M) {
 	logConfig := logging.NewDefaultConfig()
 	logConfig.Name = "simpleton"
-	logConfig.LogType = "stderr"
+	logConfig.LogType = logging.STDERR
 	logConfig.Level = logging.EVERYTHING
 	logging.Start(logConfig)
 
@@ -55,15 +55,15 @@ func TestMaxSize(t *testing.T) {
 	// get file contents via cache
 	cache := NewStupidFileCacheMaxSize(1024) // 1kb
 
-	value, e := cache.Get(filename1)
+	value, e := cache.GetString(filename1)
 	if e != nil { t.Fatalf("cache error: %v", e.Error()) }
 	if value != text1 { t.Errorf("expected %v, got %v", text1, value) }
 
-	value, e = cache.Get(filename2)
+	value, e = cache.GetString(filename2)
 	if e != nil { t.Fatalf("cache error: %v", e.Error()) }
 	if value != text2 { t.Errorf("expected %v, got %v", text2, value) }
 
-	value, e = cache.Get(filename3)
+	value, e = cache.GetString(filename3)
 	if e != nil { t.Fatalf("cache error: %v", e.Error()) }
 	if value != text3 { t.Errorf("expected %v, got %v", text3, value) }
 

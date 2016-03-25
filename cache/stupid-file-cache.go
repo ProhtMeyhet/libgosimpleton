@@ -39,6 +39,12 @@ type StupidFileCache struct {
 	// when sizeMax is reached
 	freeThreshold		uint
 
+	// maximum files that are cached. if hit, free freeMaxFilesThreshold
+	filesMax		uint
+
+	// at least free this amount fifo files from cache
+	freeFilesMaxThreshold
+
 	itemChannel		chan *CacheItem
 	numberOfManagerThreads	uint8
 
@@ -65,9 +71,11 @@ func NewStupidFileCacheMaxSize(maxSize uint) (cache *StupidFileCache) {
 
 func (cache *StupidFileCache) init() {
 	cache.sizeMax = 1024 * 1024 // 1mb
-	cache.freeThreshold = 1024 * 256 // 256kb
+	cache.freeThreshold = cache.sizeMax / 4
 	cache.cache = make(map[string][]byte, 20)
 	cache.itemChannel = make(chan *CacheItem, 5)
+	cache.filesMax = 100
+	cache.freeFilesMaxThreashold = cache.cacheMaxFiles / 4
 
 	if cache.numberOfManagerThreads == 0 {
 		cache.numberOfManagerThreads = 2
@@ -84,11 +92,11 @@ func (cache *StupidFileCache) GetString(filename string) (string, error) {
 }
 
 func (cache *StupidFileCache) Get(filename string) (value []byte, e error) {
-	// cache miss
 	// no locking, it's assumed that reading either fails
 	// or succeeds without error
 	ok := false
 	if value, ok = cache.cache[filename]; !ok {
+		// cache miss
 		value, e = cache.cacheIt(filename)
 	}
 
@@ -125,6 +133,17 @@ out:
 }
 
 func (cache *StupidFileCache) testCacheSize(dontdelete string) {
+	if len(cache.cache) > cache.filesMax {
+		cache.Lock(); i := 0
+		if simpleton.DEBUG { logging.Log(logging.INFO, "cache: have to free! hit filesMax!") }
+		for key, _ := range cache.cache {
+			if i == cache.freeFilesMaxThreshold { break }
+			cache.remove(key)
+			i++
+		}
+		cache.Unlock()
+	}
+
 	if uint(len(cache.cache[dontdelete])) > cache.sizeMax {
 		logging.Log(logging.ERROR, "file " + dontdelete + " is bigger then sizeMax! raising sizeMax!")
 		if cache.sizeMax * 10 > uint(len(cache.cache[dontdelete])) &&

@@ -14,10 +14,14 @@ import(
 * and if so update the cache
 *
 *	TODO
+*	add error handling
 *	add support for optional inotify delete
 */
 type ObservingFileCache struct {
 	StupidFileCache
+
+	stop chan bool
+	stopWatch chan string
 }
 
 func NewObservingFileCache() (cache *ObservingFileCache) {
@@ -35,21 +39,28 @@ func NewObservingFileCacheMaxSize(maxSize uint) (cache *ObservingFileCache) {
 	return
 }
 
-func (cache *ObservingFileCache) Get(filename string) (value []byte, e error) {
-	value, e = cache.StupidFileCache.Get(filename)
-
-	if e == nil {
-		go cache.watch(filename)
-	}
-
-	return
+func (cache *ObservingFileCache) init() {
+	cache.stop = make(chan bool, 1)
+	cache.StupidFileCache.init()
 }
 
-/* go */ func (cache *ObservingFileCache) watch(filename string) {
-	if simpleton.DEBUG { logging.Log(logging.INFO, "inotify started: " + filename) }
+func (cache *ObservingFileCache) Get(filename string) (value []byte, e error) {
+	// must start goroutine first and wait until watch is started, otherwise
+	// events might not be catched due to a race condition
+	// for example a write might happen before the inotify is started, but the
+	// read already took place. this write would then go unnoticed.
+	started := make(chan bool, 1)
+	go cache.watch(filename, started)
+	<-started
+	return cache.StupidFileCache.Get(filename)
+}
+
+// TODO howto stop watching when file is removed from cache?
+/* go */ func (cache *ObservingFileCache) watch(filename string, started chan bool) {
+	if simpleton.DEBUG { logging.DebugFormat("inotify started: %v", filename) }
 
 	watcher, e := inotify.NewWatcher()
-	if e != nil { logging.Log(logging.ERROR, "inotify: " + e.Error()); cache.lastE = e; return }
+	if e != nil { logging.Error("inotify: %v", e.Error()); cache.lastE = e; return }
 	defer watcher.Close()
 
 	//TODO determine if modify is enough
@@ -59,16 +70,27 @@ func (cache *ObservingFileCache) Get(filename string) (value []byte, e error) {
 	// you have been warned!
 	// e = watcher.Watch(filename)
 
-	if e != nil { logging.Log(logging.ERROR, "inotify: " + e.Error()); cache.lastE = e; return }
+	started <-true
+	if e != nil { logging.ErrorFormat("inotify: %v", e.Error()); cache.lastE = e; return }
 
+infinite:
 	for {
 		select {
 		case event := <-watcher.Event:
-			if simpleton.DEBUG { logging.Log(logging.INFO, "inotify event: " + event.String()) }
+			if simpleton.DEBUG { logging.DebugFormat("inotify event: %v", event.String()) }
 			cache.cacheIt(filename)
 		case e := <-watcher.Error:
-			logging.Log(logging.ERROR, "inotify: " + e.Error())
+			logging.ErrorFormat("inotify: %v", e.Error())
 			return
+		case watchedFilename, ok := <-cache.stopWatch
+			if !ok { break infinite }
+			if watchedFilename == filename {
+				
+			}
 		}
 	}
+}
+
+func (cache *ObservingFileCache) Close() {
+	close(cache.stopWatch)
 }

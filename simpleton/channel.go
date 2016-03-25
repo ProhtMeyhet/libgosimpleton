@@ -1,4 +1,4 @@
-package libgosimpleton
+package simpleton
 
 import(
 	// empty

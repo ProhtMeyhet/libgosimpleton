@@ -15,12 +15,13 @@ type stderrLogger struct {
 
 func NewStderrLogger(config LogConfigInterface) (stderr *stderrLogger) {
 	stderr = &stderrLogger{}
+	stderr.initialise(config)
 	return
 }
 
 func (err *stderrLogger) Log(level uint8, message string) {
 	if err.ShouldLog(level) {
-		fmt.Fprintf(os.Stderr,"%s %s: %s",err.NowClock(),LevelToString(level),message)
+		fmt.Fprintf(os.Stderr,"%s %s: %s\n", err.NowClock(), LevelToString(level), message)
 	}
 }
 

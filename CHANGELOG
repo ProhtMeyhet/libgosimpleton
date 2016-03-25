@@ -1,0 +1,11 @@
+0.2 TBD
++ simplee
+
+0.2beta
+- move simple things to simpleton/*
+- logging is now done in a separate goroutine
+- refactor of logging api
++ cache (ObservingFileCache needs rethinking)
+
+0.1
+initial release
