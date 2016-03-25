@@ -1,5 +1,5 @@
 package libgosimpleton
 
 const (
-	DEBUG = true
+	DEBUG = false
 )
