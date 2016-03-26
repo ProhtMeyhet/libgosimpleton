@@ -202,7 +202,7 @@ func TestLimitString(t *testing.T) {
 	}
 
 	if ss[50:55] != "....." {
-		t.Errorf("ss ends with %v, wanted .....", ss[49:54])
+		t.Errorf("ss ends with %v, wanted .....", ss[50:55])
 	}
 
 	s = "Cousin Hebe"
