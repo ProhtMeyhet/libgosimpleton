@@ -126,6 +126,7 @@ func TestPanic(t *testing.T) {
 
 	config := NewDefaultConfig()
 	config.LogType = NULL
+	Start(config)
 
 	Panic("Kind Captain, I've important information")
 

@@ -52,7 +52,12 @@ func Close() (e error) {
 
 // log with EMERGENCY and then panic with the message
 func Panic(message ...interface{}) {
-	stringMessage := fmt.Sprintf("%v", message...)
+	PanicFormat("%v", message...)
+}
+
+// log with EMERGENCY and then panic with the message with format
+func PanicFormat(format string, message ...interface{}) {
+	stringMessage := fmt.Sprintf(format, message...)
 	Emergency(stringMessage)
 	panic(stringMessage)
 }

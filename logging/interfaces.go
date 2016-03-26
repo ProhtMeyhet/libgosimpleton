@@ -15,6 +15,16 @@ type LogConfigInterface interface {
 	// verbosity, see tools.go:LevelToString
 	GetLevel() uint8
 	SetLevel(to uint8)
+
+	// error handling
+	GetEHandler() func(string, error)
+	SetEHandler(to func(string, error))
+	HandleE(string, error)
+
+	// plain mode (no colors, no highlights etc)
+	IsPlain() bool
+	// set to plain mode (default: false)
+	TogglePlain()
 }
 
 // union logger can log to more then one logger

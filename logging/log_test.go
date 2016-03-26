@@ -11,6 +11,10 @@ import(
 func genericLoggerTest(t *testing.T, config LogConfigInterface, name string) {
 	oldLevel := config.GetLevel(); defer config.SetLevel(oldLevel)
 	config.SetLevel(EVERYTHING)
+	oldEHandler := config.GetEHandler(); defer config.SetEHandler(oldEHandler)
+	config.SetEHandler(func(name string, e error) {
+		t.Errorf("error while logging: %v", e.Error())
+	})
 
 	if e := Start(config); e != nil {
 		t.Fatalf("%s: Open() failed! %s", name, e.Error())
@@ -53,7 +57,7 @@ func genericLoggerTest(t *testing.T, config LogConfigInterface, name string) {
 	t.Logf("%v of genericLogTest finished!", name)
 }
 
-
+// a logger that just gives back errors for testing
 const(
 	WRONG Type = 222
 )

@@ -22,16 +22,16 @@ const (
 	// an error that was recovered
 	ERROR =			0x04
 	ERROR_SYSLOG =		4
-	// warning
+	// warning. space nearly full etc.
 	WARNING =		0x08
 	WARNING_SYSLOG =	5
-	// notice
+	// notice. behaviour will change, found this driver etc.
 	NOTICE =		0x16
 	NOTICE_SYSLOG =		6
-	// info
+	// info. version info, something succeded etc.
 	INFO =			0x32
 	INFO_SYSLOG =		7
-	// debug
+	// debug. favourite time of programming
 	DEBUG =			0x64
 	DEBUG_SYSLOG =		8
 
@@ -47,8 +47,8 @@ const (
 	// VERBOSE & INFO
 	ATTENTION =	0x63
 	// VERBOSE & DEBUG
-	DEBUGGING =	127
+	DEBUGGING =	0x7f
 	// max
-	EVERYTHING =	255
+	EVERYTHING =	0xff
 )
 

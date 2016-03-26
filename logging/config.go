@@ -23,6 +23,8 @@ type DefaultConfig struct {
 	Level uint8
 	// error handler (name string, e error)
 	EHandler func(string, error)
+
+	plain bool
 }
 
 func NewDefaultConfig() (config *DefaultConfig) {
@@ -48,6 +50,26 @@ func (config *DefaultConfig) GetLevel() uint8 {
 
 func (config *DefaultConfig) SetLevel(to uint8) {
 	config.Level = to
+}
+
+func (config *DefaultConfig) GetEHandler() func(name string, e error) {
+	return config.EHandler
+}
+
+func (config *DefaultConfig) SetEHandler(to func(name string, e error)) {
+	config.EHandler = to
+}
+
+func (config *DefaultConfig) HandleE(name string, e error) {
+	config.EHandler(name, e)
+}
+
+func (config *DefaultConfig) IsPlain() bool {
+	return config.plain
+}
+
+func (config *DefaultConfig) TogglePlain() {
+	config.plain = !config.plain
 }
 
 

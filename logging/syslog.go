@@ -21,25 +21,31 @@ func (sys *syslogLogger) Open() (e error) {
 }
 
 func (sys *syslogLogger) Log(level uint8, message string) {
+	var e error
 	if sys.ShouldLog(level) {
 		switch(level) {
 			case EMERGENCY:
-				sys.lastE = sys.logger.Emerg(message)
+				e = sys.logger.Emerg(message)
 			case CRITICAL:
-				sys.lastE = sys.logger.Crit(message)
+				e = sys.logger.Crit(message)
+			// not used
 			//case ALERT:
-			//	sys.lastE = syslog.logger.Alert(message)
+			//	e = syslog.logger.Alert(message)
 			case ERROR:
-				sys.lastE = sys.logger.Err(message)
+				e = sys.logger.Err(message)
 			case WARNING:
-				sys.lastE = sys.logger.Warning(message)
+				e = sys.logger.Warning(message)
 			case NOTICE:
-				sys.lastE = sys.logger.Notice(message)
+				e = sys.logger.Notice(message)
 			case INFO:
-				sys.lastE = sys.logger.Info(message)
+				e = sys.logger.Info(message)
 			case DEBUG:
-				sys.lastE = sys.logger.Debug(message)
+				e = sys.logger.Debug(message)
 		}
+	}
+
+	if e != nil {
+		sys.interfaceConfig.HandleE(sys.name, e)
 	}
 }
 
