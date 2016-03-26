@@ -30,7 +30,7 @@ func (err *stderrLogger) initialise(config LogConfigInterface) {
 func (err *stderrLogger) Log(level uint8, message string) {
 	if err.ShouldLog(level) {
 		if err.interfaceConfig.IsPlain() {
-			err.log(level, message, "%v")
+			err.log(level, message, "%s %s: %s\n")
 		} else {
 			err.logColored(level, message)
 		}
