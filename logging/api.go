@@ -118,4 +118,3 @@ func DebugFormat(format string, message ...interface{}) {
 func Log(level uint8, message ...interface{}) {
 	doLog(level, message...)
 }
-
