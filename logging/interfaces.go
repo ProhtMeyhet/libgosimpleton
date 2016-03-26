@@ -26,7 +26,8 @@ type unionInterface interface {
 // used for early logging
 type earlyInterface interface {
 	// flush buffered Logs to
-	Flush(to logInterface)
+	Flush(to logInterface) error
+	Close() error
 }
 
 // interface for loggers, see abstractLogger & fileLogger
@@ -37,9 +38,6 @@ type logInterface interface {
 	// log with this level, watch if level satisfies
 	// current logLevel (given via SetLevel())
 	Log(level uint8, message string)
-
-	// return if there has been an error and return last one
-	HasError() (bool, error)
 
 	// should message be logged for level
 	ShouldLog(level uint8) bool

@@ -8,34 +8,16 @@ import(
 	"time"
 )
 
-func genericLoggerTest(t *testing.T, config LogConfigInterface, name string) {
-	if e := Start(config); e != nil {
-		t.Fatalf("%s: Open() failed! %s", name, e.Error())
-	}
-
-	if !logger.ShouldLog(ERROR) {
-		t.Fatalf("log.Shouldlog failed for %s", LevelToString(ERROR))
-	}
-
-	Error("test")
-
-	// wait for startup of goroutine
-	time.Sleep(time.Second * 1)
-
-	if e := Close(); e != nil {
-		t.Errorf("%s: Close() failed! %s", name, e.Error())
-	}
-}
-
 func TestFileLogger(t *testing.T) {
 	config := NewDefaultFileConfig()
 	config.Path = os.TempDir() + "/test" + time.Now().Format(DATE_FORMAT) +  "30385946.log"
+	if config.GetPath() != config.Path {
+		t.Errorf("expected %v from GetPath(), got %v", config.Path, config.GetPath())
+	}
 
 	// remove old testfile if its there
-	os.Remove(config.Path)
-	defer os.Remove(config.Path)
+	os.Remove(config.Path);	defer os.Remove(config.Path)
 
-	//file := NewFileLogger(config)
 
 	// log something
 	genericLoggerTest(t, config, "fileLogger")
@@ -74,5 +56,34 @@ func testExpectedInFile(t *testing.T, file *fileLogger, expected []byte) {
 		t.Errorf("'%s' != '%s'", expected, needed)
 		t.Log("left logfile for analysis: " + file.config.Path)
 		return
+	}
+}
+
+func TestTrollFile(t *testing.T) {
+	config := NewDefaultFileConfig()
+	config.Path = os.TempDir() + "/test" + time.Now().Format(DATE_FORMAT) +  "30385946.log"
+	file := NewFileLogger(config); defer file.Close()
+	if e := file.Close(); e != nil {
+		t.Errorf("unexpected error on Close(): %v", e.Error())
+	}
+
+	if e := file.Open(); e != nil {
+		t.Errorf("unexpected error on Open(): %v", e.Error())
+	}
+
+	if _, e := file.openLogFile(config.Path); e != nil {
+		t.Errorf("unexpected error on openLogFile(): %v", e.Error())
+	}
+
+	file = NewFileLogger(NewDefaultConfig()); defer file.Close()
+	if e := file.Open(); e == nil {
+		t.Errorf("fileLogger accepts DefaultConfig!\n")
+	}
+
+	wrongConfig := NewDefaultFileConfig()
+	wrongConfig.Path = "/mrs/crips/little/buttercup.log" + time.Now().Format(DATE_FORMAT)
+	file = NewFileLogger(wrongConfig); defer file.Close()
+	if e := file.Open(); e == nil {
+		t.Errorf("fileLogger opens non existing file!\n")
 	}
 }

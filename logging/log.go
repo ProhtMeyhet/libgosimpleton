@@ -29,6 +29,10 @@ func init() {
 // log to memory first, as this requires no real configuration.
 // Start() will flush this logger to the actual logger
 func StartEarly() {
+	if _, ok := logger.(earlyInterface); ok {
+		return // already started
+	}
+
 	initialise()
 	config := NewDefaultConfig()
 	config.Level = EVERYTHING
@@ -52,7 +56,7 @@ func Start(config LogConfigInterface) (e error) {
 
 	if earlyLogger, ok := earlyLogging.(earlyInterface); ok {
 		earlyLogger.Flush(logger)
-		Close()
+		earlyLogger.Close()
 	}
 
 	initialise()

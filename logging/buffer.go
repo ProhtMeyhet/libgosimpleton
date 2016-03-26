@@ -37,8 +37,6 @@ func (buffer *bufferLogger) Close() (e error) {
 }
 
 func (buffer *bufferLogger) Flush(to logInterface) (e error) {
-	close(logging)
-
 	for k, _ := range buffer.messages {
 		to.Log(buffer.levels[k], buffer.messages[k])
 	}

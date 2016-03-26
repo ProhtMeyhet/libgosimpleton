@@ -19,15 +19,6 @@ func (logger *abstractLogger) ShouldLog(level uint8) bool {
 	return level == level & logger.interfaceConfig.GetLevel()
 }
 
-// DEPRECATED; use config.EHandler
-func (logger *abstractLogger) HasError() (bool, error) {
-	if logger.lastE != nil {
-		return true, logger.lastE
-	} else {
-		return false, nil
-	}
-}
-
 func (logger *abstractLogger) SetName(to string) {
 	logger.name = to
 }

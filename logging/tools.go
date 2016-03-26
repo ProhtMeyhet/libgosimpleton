@@ -4,10 +4,6 @@ import(
 	"strings"
 )
 
-func IsLevel(to uint8) bool {
-	return to > 0 && to <= EVERYTHING
-}
-
 func LevelToInt(level string) uint8 {
 	switch strings.ToUpper(level) {
 	case "EMERGENCY":
