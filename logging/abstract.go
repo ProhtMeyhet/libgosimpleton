@@ -50,10 +50,7 @@ infinite:
 		select {
 		case logEntry, ok := <-logging:
 			if !ok { break infinite }
-			formatted := ""
-			for _, message := range logEntry.message {
-				formatted = fmt.Sprintf(logEntry.format, message)
-			}
+			formatted := fmt.Sprintf(logEntry.format, logEntry.message...)
 			logger.Log(logEntry.level, formatted)
 		}
 	}
