@@ -13,6 +13,7 @@ type abstractLogger struct{
 
 func (logger *abstractLogger) initialise(config LogConfigInterface) {
 	logger.interfaceConfig = config
+	logger.name = config.GetName()
 }
 
 func (logger *abstractLogger) ShouldLog(level uint8) bool {
