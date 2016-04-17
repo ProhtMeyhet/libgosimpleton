@@ -92,12 +92,16 @@ func (cache *StupidFileCache) GetString(filename string) (string, error) {
 }
 
 func (cache *StupidFileCache) Get(filename string) (value []byte, e error) {
-	// no locking, it's assumed that reading either fails
-	// or succeeds without error
+	// locking required:
+	// golang fatal error: concurrent map read and map write
+	cache.Lock()
 	ok := false
 	if value, ok = cache.cache[filename]; !ok {
+		cache.Unlock()
 		// cache miss
 		value, e = cache.cacheIt(filename)
+	} else {
+		cache.Unlock()
 	}
 
 	return
