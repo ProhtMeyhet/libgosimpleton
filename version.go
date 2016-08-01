@@ -18,7 +18,7 @@ const(
 	VERSION = MAJOR_VERSION + "." + MINOR_VERSION + "." + BUGFIX_VERSION
 
 	// should one be using this
-	FROM_MASTER = true
+	FROM_MASTER = false
 )
 
 func Version() {
