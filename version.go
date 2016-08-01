@@ -9,7 +9,7 @@ const(
 	MAJOR_VERSION = "0"
 
 	// new features
-	MINOR_VERSION = "2"
+	MINOR_VERSION = "3"
 
 	// no incompatible changes, just bug fixes
 	BUGFIX_VERSION = "0"
