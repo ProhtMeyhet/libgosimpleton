@@ -8,12 +8,12 @@ import(
 	"time"
 
 	"github.com/ProhtMeyhet/libgosimpleton/logging"
+	"github.com/ProhtMeyhet/libgosimpleton"
 )
 
 
 func TestObservingFileCache(t *testing.T) {
 	filename := os.TempDir() + "/testingoleeeeoleeeoleeee65496498"
-	//filename := "/media/truecrypt4/ffff"
 	text1 := "I am the captain of the Pinafore\n"
 	text2 := "And a right good captain, too!"
 	textWhole := text1 + text2
@@ -33,7 +33,7 @@ func TestObservingFileCache(t *testing.T) {
 	// change file, should trigger inotify
 	_, e = temp.WriteString(text2)
 	if e != nil { t.Fatalf("error writing to temp file: %v", e.Error()) }
-	logging.Debug("changed file, expecting inotify")
+	if libgosimpleton.DEBUG { logging.Debug("changed file, expecting inotify") }
 
 	// shouldn't take that long, just to be sure
 	time.Sleep(time.Second * 2)
@@ -46,4 +46,7 @@ func TestObservingFileCache(t *testing.T) {
 	}
 
 	cache.Close()
+	if len(cache.cache) > 0 {
+		t.Errorf("expected cache.cache to be empty! still %v items!", len(cache.cache))
+	}
 }

@@ -54,6 +54,7 @@ func TestMaxSize(t *testing.T) {
 
 	// get file contents via cache
 	cache := NewStupidFileCacheMaxSize(1024) // 1kb
+	defer cache.Close()
 
 	value, e := cache.GetString(filename1)
 	if e != nil { t.Fatalf("cache error: %v", e.Error()) }
@@ -79,6 +80,17 @@ func TestMaxSize(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	if _, ok := cache.cache[filename3]; ok {
-		t.Errorf("took longer then 2s to remove filename3 from cache!")
+		t.Fatalf("took longer then 2s to remove filename3 from cache!")
+	}
+
+	cache.SetMaxSize(0); if cache.GetMaxSize() == 0 {
+		t.Errorf("SetMaxSize() accepts 0 !")
+	}
+
+	cache.SetMaxFiles(1)
+	cache.Get(filename3)
+
+	cache.SetMaxFiles(0); if cache.GetMaxFiles() == 0 {
+		t.Errorf("SetMaxFiles() accepts 0 !")
 	}
 }

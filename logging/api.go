@@ -62,58 +62,86 @@ func PanicFormat(format string, message ...interface{}) {
 	panic(stringMessage)
 }
 
+// cannot continue, aborting immidiatly
 func Emergency(message ...interface{}) {
 	doLog(EMERGENCY, message...)
 }
 
+// require immidiate attention
 func Critical(message ...interface{}) {
 	doLog(CRITICAL, message...)
 }
 
+// not used
+/*
+func Alert(message ..interface{}) {
+	doLolg(ALERT, message...)
+}
+*/
+
+// an error that was recovered
 func Error(message ...interface{}) {
 	doLog(ERROR, message...)
 }
 
+// warning: space nearly full etc.
 func Warning(message ...interface{}) {
 	doLog(WARNING, message...)
 }
 
+// notice: behaviour will change, found this driver etc.
 func Notice(message ...interface{}) {
 	doLog(NOTICE, message...)
 }
 
+// info: version info, something succeded etc.
 func Info(message ...interface{}) {
 	doLog(INFO, message...)
 }
 
+// debug. favourite time of programming
 func Debug(message ...interface{}) {
 	doLog(DEBUG, message...)
 }
 
+// cannot continue, aborting immidiatly
 func EmergencyFormat(format string, message ...interface{}) {
 	LogFormat(EMERGENCY, format, message...)
 }
 
+// require immidiate attention
 func CriticalFormat(format string, message ...interface{}) {
 	LogFormat(CRITICAL, format, message...)
 }
 
+// not used
+/*
+func AlertFormat(format string, message ...interface{}) {
+	LogFormat(ALERT, format, message...)
+}
+*/
+
+// an error that was recovered
 func ErrorFormat(format string, message ...interface{}) {
 	LogFormat(ERROR, format, message...)
 }
 
+// warning: space nearly full etc.
 func WarningFormat(format string, message ...interface{}) {
 	LogFormat(WARNING, format, message...)
 }
 
+// notice: behaviour will change, found this driver etc.
 func NoticeFormat(format string, message ...interface{}) {
 	LogFormat(NOTICE, format, message...)
 }
 
+// info: version info, something succeded etc.
 func InfoFormat(format string, message ...interface{}) {
 	LogFormat(INFO, format, message...)
 }
 
+// debug, favourite time of programming
 func DebugFormat(format string, message ...interface{}) {
 	LogFormat(DEBUG, format, message...)
 }

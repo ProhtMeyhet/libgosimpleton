@@ -47,9 +47,6 @@ type StupidFileCache struct {
 
 	itemChannel		chan *CacheItem
 	numberOfManagerThreads	uint8
-
-	// last error of inotify
-	lastE			error
 }
 
 func NewStupidFileCache() (cache *StupidFileCache) {
@@ -72,7 +69,7 @@ func NewStupidFileCacheMaxSize(maxSize uint) (cache *StupidFileCache) {
 func (cache *StupidFileCache) init() {
 	cache.sizeMax = 1024 * 1024 // 1mb
 	cache.freeThreshold = cache.sizeMax / 4
-	cache.cache = make(map[string][]byte, 20)
+	cache.cache = make(map[string][]byte)
 	cache.itemChannel = make(chan *CacheItem, 5)
 	cache.filesMax = 100
 	cache.freeFilesMaxThreshold = cache.filesMax / 4
@@ -95,8 +92,7 @@ func (cache *StupidFileCache) Get(filename string) (value []byte, e error) {
 	// locking required:
 	// golang fatal error: concurrent map read and map write
 	cache.Lock()
-	ok := false
-	if value, ok = cache.cache[filename]; !ok {
+	value, ok := cache.cache[filename]; if !ok {
 		cache.Unlock()
 		// cache miss
 		value, e = cache.cacheIt(filename)
@@ -110,7 +106,7 @@ func (cache *StupidFileCache) Get(filename string) (value []byte, e error) {
 func (cache *StupidFileCache) cacheIt(filename string) (contents []byte, e error) {
 	item := &CacheItem{ name: filename }
 	contents, e = ioutil.ReadFile(filename)
-	if e != nil { logging.Log(logging.ERROR, "inotify: " + e.Error()); goto out }
+	if e != nil { logging.ErrorFormat("inotify: %v", e.Error()); goto out }
 
 	item.contents = contents
 	cache.itemChannel <- item
@@ -139,7 +135,7 @@ out:
 func (cache *StupidFileCache) testCacheSize(dontdelete string) {
 	if uint(len(cache.cache)) > cache.filesMax {
 		cache.Lock(); i := uint(0)
-		if simpleton.DEBUG { logging.Log(logging.INFO, "cache: have to free! hit filesMax!") }
+		if simpleton.DEBUG { logging.Debug("cache: have to free! hit filesMax!") }
 		for key, _ := range cache.cache {
 			if i == cache.freeFilesMaxThreshold { break }
 			cache.remove(key)
@@ -149,7 +145,7 @@ func (cache *StupidFileCache) testCacheSize(dontdelete string) {
 	}
 
 	if uint(len(cache.cache[dontdelete])) > cache.sizeMax {
-		logging.Log(logging.ERROR, "file " + dontdelete + " is bigger then sizeMax! raising sizeMax!")
+		logging.ErrorFormat("file %v is bigger then sizeMax! raising sizeMax!", dontdelete)
 		if cache.sizeMax * 10 > uint(len(cache.cache[dontdelete])) &&
 			cache.sizeMax * 10 < 104857600 {
 			cache.sizeMax *= 10
@@ -175,9 +171,8 @@ func (cache *StupidFileCache) testCacheSize(dontdelete string) {
 }
 
 func (cache *StupidFileCache) Reset() {
-	// lock protects cache.byteCount
 	cache.Lock()
-	cache.cache = make(map[string][]byte, 20)
+	cache.cache = make(map[string][]byte)
 	cache.byteCount = 0
 	cache.Unlock()
 }
@@ -195,8 +190,9 @@ func (cache *StupidFileCache) remove(filename string) {
 	delete(cache.cache, filename)
 }
 
-func (cache *StupidFileCache) GetLastE() error {
-	return cache.lastE
+// remove all files from cache
+func (cache *StupidFileCache) Close() {
+	cache.Reset()
 }
 
 func (cache *StupidFileCache) Free() uint {
@@ -216,5 +212,13 @@ func (cache *StupidFileCache) GetMaxSize() uint {
 }
 
 func (cache *StupidFileCache) SetMaxSize(to uint) {
-	cache.sizeMax = to
+	if to > 0 { cache.sizeMax = to }
+}
+
+func (cache *StupidFileCache) GetMaxFiles() uint {
+	return cache.filesMax
+}
+
+func (cache *StupidFileCache) SetMaxFiles(to uint) {
+	if to > 0 { cache.filesMax = to }
 }

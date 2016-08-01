@@ -20,7 +20,8 @@ import(
 type ObservingFileCache struct {
 	StupidFileCache
 
-	stop chan bool
+	// map[filename]chan stop
+	threads map[string]chan bool
 }
 
 func NewObservingFileCache() (cache *ObservingFileCache) {
@@ -39,7 +40,7 @@ func NewObservingFileCacheMaxSize(maxSize uint) (cache *ObservingFileCache) {
 }
 
 func (cache *ObservingFileCache) init() {
-	cache.stop = make(chan bool, 1)
+	cache.threads = make(map[string]chan bool)
 	cache.StupidFileCache.init()
 }
 
@@ -54,12 +55,11 @@ func (cache *ObservingFileCache) Get(filename string) (value []byte, e error) {
 	return cache.StupidFileCache.Get(filename)
 }
 
-// TODO howto stop watching when file is removed from cache?
 /* go */ func (cache *ObservingFileCache) watch(filename string, started chan bool) {
 	if simpleton.DEBUG { logging.DebugFormat("inotify started: %v", filename) }
 
 	watcher, e := inotify.NewWatcher()
-	if e != nil { logging.Error("inotify: %v", e.Error()); cache.lastE = e; return }
+	if e != nil { logging.ErrorFormat("inotify: %v", e.Error()); return }
 	defer watcher.Close()
 
 	//TODO determine if modify is enough
@@ -70,7 +70,9 @@ func (cache *ObservingFileCache) Get(filename string) (value []byte, e error) {
 	// e = watcher.Watch(filename)
 
 	started <-true
-	if e != nil { logging.ErrorFormat("inotify: %v", e.Error()); cache.lastE = e; return }
+	if e != nil { logging.ErrorFormat("inotify: %v", e.Error());  return }
+
+	cache.threads[filename] = make(chan bool, 1)
 
 infinite:
 	for {
@@ -81,12 +83,40 @@ infinite:
 		case e := <-watcher.Error:
 			logging.ErrorFormat("inotify: %v", e.Error())
 			return
-		case _, stop := <-cache.stop:
-			if stop { break infinite }
+		case _, goOn := <-cache.threads[filename]:
+			if !goOn {
+				delete(cache.threads, filename)
+				break infinite
+			}
 		}
 	}
 }
 
+// remove all files from cache
+func (cache *ObservingFileCache) Reset() {
+	cache.Lock()
+	for key := range cache.cache {
+		cache.remove(key)
+	}
+	cache.Unlock()
+}
+
+// remove from cache; stop watching goroutines.
+func (cache *ObservingFileCache) Remove(filename string) {
+	cache.Lock()
+	cache.remove(filename)
+	cache.Unlock()
+}
+
+// remember locks!
+func (cache *ObservingFileCache) remove(filename string) {
+	if _, ok := cache.threads[filename]; ok {
+		close(cache.threads[filename])
+	}
+	cache.StupidFileCache.remove(filename)
+}
+
+// close
 func (cache *ObservingFileCache) Close() {
-	close(cache.stop)
+	cache.Reset()
 }

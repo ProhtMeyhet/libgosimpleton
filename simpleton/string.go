@@ -141,6 +141,25 @@ func RemoveCharsByString(s string, i int, n string) string {
 	return RemoveChars(s, i, Length(n))
 }
 
+func RemoveFirstCharsIfEqual(s string, ss ...string) string {
+	for _, sss := range ss {
+		if FirstCharsEqual(s, sss) {
+			return RemoveFirstCharsByString(s, sss)
+		}
+	}
+
+	return s
+}
+
+func RemoveLastCharsIfEqual(s string, ss ...string) string {
+	for _, sss := range ss {
+		if LastCharsEqual(s, sss) {
+			return RemoveLastCharsByString(s, sss)
+		}
+	}
+
+	return s
+}
 
 func GetLongestString(s ...string) string {
 	_, index := GetLongestStringLength(s...)
@@ -216,4 +235,40 @@ func getSumOfStrings(trim bool, of ...string) (sum uint64) {
 	}
 
 	return
+}
+
+// compare last char of s to ss, if equal append sss
+func FirstCharEqualAppend(s, ss, sss string) string {
+	if GetFirstChar(s) == ss {
+		s += sss
+	}
+
+	return sss
+}
+
+// compare first char of s to ss, if not equal append sss
+func FirstCharNotEqualAppend(s, ss, sss string) string {
+	if GetFirstChar(s) != ss {
+		s += sss
+	}
+
+	return sss
+}
+
+// compare last char of s to ss, if equal append sss
+func LastCharEqualAppend(s, ss, sss string) string {
+	if GetLastChar(s) == ss {
+		s += sss
+	}
+
+	return sss
+}
+
+// compare last char of s to ss, if not equal append sss
+func LastCharNotEqualAppend(s, ss, sss string) string {
+	if GetLastChar(s) != ss {
+		s += sss
+	}
+
+	return sss
 }
