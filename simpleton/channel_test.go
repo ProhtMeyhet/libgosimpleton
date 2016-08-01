@@ -10,7 +10,7 @@ func TestStringListToChannel(t *testing.T) {
 	list := []string{ "acdc", "are", "the", "greatest" }
 	key := 0
 
-	channel := StringListToChannel(list)
+	channel := StringListToChannel(list...)
 	for item := range channel {
 		if !reflect.DeepEqual(list[key], item) {
 			t.Errorf("expected %v, got %v\n", list[key], item)
