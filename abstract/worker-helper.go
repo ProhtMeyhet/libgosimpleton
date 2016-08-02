@@ -31,14 +31,17 @@ func (helper *WorkerHelper) Workers() uint {
 }
 
 // set workers
-func (helper *WorkerHelper) SetWorkers(to uint) {
+func (helper *WorkerHelper) SetWorkers(to uint) *WorkerHelper {
 	// must be devideable by 2. minor error, fix it here
 	if to % 2 != 0 { to++ }
 	// ignore zero value
-	if to == 0 { return }
+	if to == 0 { goto out }
 
 	helper.workers = to
 	helper.workerBuffers = to * 4
+
+out:
+	return helper
 }
 
 // get worker buffers
@@ -47,14 +50,15 @@ func (helper *WorkerHelper) WorkerBuffers() uint {
 }
 
 // set worker buffers
-func (helper *WorkerHelper) SetWorkerBuffers(to uint) {
+func (helper *WorkerHelper) SetWorkerBuffers(to uint) *WorkerHelper {
 	// disallow setting worker buffers smaller then number of workers
 	// however allow 0 as this makes the buffer channels unbuffered
-	if to < helper.workers && to != 0 {
-		return
-	}
+	if to < helper.workers && to != 0 { goto out }
 
 	helper.workerBuffers = to
+
+out:
+	return helper
 }
 
 func (helper *WorkerHelper) Copy(from interface{}) *WorkerHelper {

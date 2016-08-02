@@ -36,13 +36,15 @@ func (helper *BaseHelper) ShouldCache() bool {
 }
 
 // toggle cache you should
-func (helper *BaseHelper) ToggleCache() {
+func (helper *BaseHelper) ToggleCache() *BaseHelper {
 	helper.noCache = !helper.noCache
+	return helper
 }
 
 // set error function
-func (helper *BaseHelper) SetE(to func(*BaseHelper, string, error)) {
+func (helper *BaseHelper) SetE(to func(*BaseHelper, string, error)) *BaseHelper {
 	helper.onE = to
+	return helper
 }
 
 // raise an error
@@ -52,13 +54,15 @@ func (helper *BaseHelper) RaiseError(name string, e error) {
 	}
 }
 
-func (helper *BaseHelper) Copy(from interface{}) {
+func (helper *BaseHelper) Copy(from interface{}) *BaseHelper {
 	if baseHelper, ok := from.(*BaseHelper); !ok {
 		panic("could not cast to *BaseHelper !")
 	} else {
 		helper.noCache = baseHelper.noCache
 		helper.onE = baseHelper.onE
 	}
+
+	return helper
 }
 
 // just write plainly to stderr
