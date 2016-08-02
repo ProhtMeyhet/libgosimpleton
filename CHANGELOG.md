@@ -1,8 +1,13 @@
 Current
 =======
 
-0.2beta
--------
+0.3
+---
+- add parallel/work.go
+- add iotool
+
+0.2
+---
 
 - cleanup + bugfixes
 - move simple things to simpleton/*
@@ -28,11 +33,9 @@ libgosimpleton-next
 ---
 + add config for SQL in credentialstool
 - more tests for credentials
-- add iotool
 
 N.x
 ---
 - move crediantialstool to own package
 - refactor cache to CachedReader for io.Reader
 - add Liltemplate
-- add parallel
