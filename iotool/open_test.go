@@ -4,7 +4,6 @@ import(
 	"testing"
 
 	"io/ioutil"
-	"math/rand"
 	"path/filepath"
 	"time"
 
@@ -33,7 +32,7 @@ func TestTemporary(t *testing.T) {
 	prefix := "Et tu, Brute"
 
 	// see next debug if
-	if DEBUG { rand.Seed(1) }
+	if DEBUG { random.Seed(1) }
 
 	handler, e := Temporary(ReadAndWrite(), prefix)
 	if e != nil {
@@ -42,7 +41,7 @@ func TestTemporary(t *testing.T) {
 	defer Close(handler); defer Remove(handler); t.Logf("created file: '%v'", handler.Name())
 
 	if DEBUG {
-		rand.Seed(1)
+		random.Seed(1)
 		handler2, e := Temporary(ReadAndWrite(), prefix)
 		if e != nil {
 			t.Errorf("unexpected error creating temporary file: '%v'", e)
@@ -59,9 +58,9 @@ func TestTemporary(t *testing.T) {
 	testWriteFile(t, handler)
 	testReadFile(t, handler)
 
-	rand.Seed(1)
+	random.Seed(1)
 	name := temporaryName(prefix); t.Logf("temporary name1: '%v'", name)
-	rand.Seed(1)
+	random.Seed(1)
 	name2 := temporaryName(prefix); t.Logf("temporary name2: '%v'", name2)
 	name3 := temporaryName(prefix); t.Logf("temporary name3: '%v'", name3)
 

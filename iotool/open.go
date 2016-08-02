@@ -9,6 +9,8 @@ import(
 	"github.com/ProhtMeyhet/libgosimpleton/simpleton"
 )
 
+var random *rand.Rand
+
 // open a file with FileHelper. if its a dir, return nil.
 // it's your responsibility to close the file...
 func Open(fileHelper *FileHelper, path string) (handler FileInterface, e error) {
@@ -83,8 +85,10 @@ again:
 func TemporaryName(prefix string) string {
 	// if not testing, seed with current time.
 	if !DEBUG {
-		// gotta seed manually these days...
-		rand.Seed(time.Now().UnixNano())
+		if random == nil {
+			// gotta seed manually these days...
+			random = rand.New(rand.NewSource(time.Now().UnixNano()))
+		}
 	}
 	return temporaryName(prefix)
 }
@@ -92,7 +96,7 @@ func TemporaryName(prefix string) string {
 // for testing purposes this function was split
 func temporaryName(prefix string) string {
 	directory := os.TempDir()
-	name := prefix + PREFIX_SEPARATOR + strconv.Itoa(int(uint(rand.Int63())))
+	name := prefix + PREFIX_SEPARATOR + strconv.Itoa(int(uint(random.Int63())))
 	// FIXME: why the bloody fuck is os.PathSeparator a rune ?!?
 	return directory + string(os.PathSeparator) + name
 }
