@@ -83,13 +83,11 @@ again:
 
 // return a filename with full path in os.TempDir(). prefix should be your program name.
 func TemporaryName(prefix string) string {
-	// if not testing, seed with current time.
-	if !DEBUG {
-		if random == nil {
-			// gotta seed manually these days...
-			random = rand.New(rand.NewSource(time.Now().UnixNano()))
-		}
+	if random == nil {
+		// gotta seed manually these days...
+		random = rand.New(rand.NewSource(time.Now().UnixNano()))
 	}
+
 	return temporaryName(prefix)
 }
 
