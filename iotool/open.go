@@ -3,6 +3,7 @@ package iotool
 import(
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -93,8 +94,13 @@ func TemporaryName(prefix string) string {
 
 // for testing purposes this function was split
 func temporaryName(prefix string) string {
+	// ignore paths, just need prefix
+	if prefix != "" {
+		prefix = filepath.Base(prefix) + PREFIX_SEPARATOR
+	}
+
 	directory := os.TempDir()
-	name := prefix + PREFIX_SEPARATOR + strconv.Itoa(int(uint(random.Int63())))
+	name := prefix + strconv.Itoa(int(uint(random.Int63())))
 	// FIXME: why the bloody fuck is os.PathSeparator a rune ?!?
 	return directory + string(os.PathSeparator) + name
 }
