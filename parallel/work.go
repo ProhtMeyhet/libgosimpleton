@@ -23,58 +23,60 @@ type Work struct {
 	sync.Mutex
 
 	// worker of numbers
-	numberOfWorkers uint
+	workers uint
 
 	// wait!
-	waitGroup	*sync.WaitGroup
+	waitGroup	sync.WaitGroup
 
 	// final function. hint: use it to close channels
 	finallyFunc	func()
-
-	// used for initialise
-	once		sync.Once
 
 	// ensure waitGroup.Wait() only gets called once.
 	waitOnce	sync.Once
 
 	// required to reset work.waitOnce
 	reset		sync.Once
+
+	Talk		chan string
 }
 
-// New York
-func NewWork(anumberOfWorkers uint) (work *Work) {
-	work = &Work{ numberOfWorkers: anumberOfWorkers }
-	work.Initialise()
+// New York; determine number of workers by number of CPU or amaxworkers, whichever smaller
+func NewWork(amaxworkers uint) (work *Work) {
+	work = &Work{}
+	work.Initialise(SuggestNumberOfWorkers(amaxworkers))
+	return
+}
+
+// manually set number of workers
+func NewWorkManual(aworkers uint) (work *Work) {
+	work = &Work{}
+	work.Initialise(aworkers)
 	return
 }
 
 // New York Finally
-func NewWorkFinally(anumberOfWorkers uint, afinally func()) (work *Work) {
-	work = &Work{ numberOfWorkers: anumberOfWorkers,
-			finallyFunc: afinally,
-			}
-	work.Initialise()
+func NewWorkFinally(aworkers uint, afinally func()) (work *Work) {
+	work = &Work{ finallyFunc: afinally }
+	work.Initialise(aworkers)
 	return
 }
 
 // i n i t i a l i z e
-func (work *Work) Initialise() {
-	work.once.Do(func() {
-		if runtime.GOMAXPROCS(0) <= runtime.NumCPU() {
-			runtime.GOMAXPROCS(runtime.NumCPU() * 2)
-		}
-		work.waitGroup = &sync.WaitGroup{}
-	})
+func (work *Work) Initialise(aworkers uint) {
+	work.workers = aworkers
+	if runtime.GOMAXPROCS(0) <= runtime.NumCPU() {
+		runtime.GOMAXPROCS(runtime.NumCPU() * 2)
+	}
 }
 
-// start numberOfWorkers - 1 in separate goroutines and run one
+// start workers - 1 in separate goroutines and run one
 // worker in this goroutine. the worker should block till the work is done.
 // it is not guaranteed that all work will be processed nor that the last
 // worker is really the last finishing (which can mean, that workers still
 // processing work can be interrupted and shut down by program termination).
 func (work *Work) Run(worker func()) {
 	go func () {
-		for i := uint(0); i < work.numberOfWorkers -1; i++ {
+		for i := uint(0); i < work.workers -1; i++ {
 			go worker()
 		}
 	}()
@@ -103,7 +105,7 @@ func (work *Work) Start(worker func()) {
 
 // start a bunch of workers with waitGroup
 func (work *Work) start(worker func()) {
-	for i := uint(0); i < work.numberOfWorkers; i++ {
+	for i := uint(0); i < work.workers; i++ {
 		work.waitGroup.Add(1)
 		go func() {
 			worker()
@@ -200,9 +202,31 @@ func (work *Work) Timeout(duration time.Duration, cancel func()) {
 	}()
 }
 
+func (work *Work) Workers() uint {
+	return work.workers
+}
+
+// usually it's a good idea to have 4 * more buffers then workers; please state a max
+func (work *Work) SuggestBufferSize(max uint) uint {
+	if work.workers * 4 > max && max > 0 {
+		return max
+	}
+
+	return work.workers * 4
+}
+
+func (work *Work) SuggestFileBufferSize() uint {
+	// TODO determine if too much or not enough
+	return work.workers * 16
+}
+
 /* convinience functions */
 
 // suggest a number of workers.
-func SuggestNumberOfWorkers() uint {
+func SuggestNumberOfWorkers(max uint) uint {
+	if max > 0 && uint(runtime.NumCPU() * 2) > max {
+		return max
+	}
+
 	return uint(runtime.NumCPU() * 2)
 }

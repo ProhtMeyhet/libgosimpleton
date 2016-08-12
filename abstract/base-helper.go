@@ -11,20 +11,20 @@ type BaseHelper struct {
 	noCache		bool
 
 	// call this function on every error
-	onE		func(*BaseHelper, string, error)
+	onE		func(string, error)
 }
 
 // shiny and fresh
-func NewBaseHelper(aOnE func(*BaseHelper, string, error)) (helper *BaseHelper) {
+func NewBaseHelper(aOnE func(string, error)) (helper *BaseHelper) {
 	helper = &BaseHelper{}
 	helper.Initialise(aOnE)
 	return
 }
 
 // i n i t
-func (helper *BaseHelper) Initialise(aOnE func(*BaseHelper, string, error)) {
+func (helper *BaseHelper) Initialise(aOnE func(string, error)) {
 	if aOnE == nil {
-		helper.onE = func(*BaseHelper, string, error) {}
+		helper.onE = func(string, error) {}
 	} else {
 		helper.onE = aOnE
 	}
@@ -42,7 +42,7 @@ func (helper *BaseHelper) ToggleCache() *BaseHelper {
 }
 
 // set error function
-func (helper *BaseHelper) SetE(to func(*BaseHelper, string, error)) *BaseHelper {
+func (helper *BaseHelper) SetE(to func(string, error)) *BaseHelper {
 	helper.onE = to
 	return helper
 }
@@ -50,7 +50,7 @@ func (helper *BaseHelper) SetE(to func(*BaseHelper, string, error)) *BaseHelper 
 // raise an error
 func (helper *BaseHelper) RaiseError(name string, e error) {
 	if helper.onE != nil {
-		helper.onE(helper, name, e)
+		helper.onE(name, e)
 	}
 }
 
@@ -66,9 +66,9 @@ func (helper *BaseHelper) Copy(from interface{}) *BaseHelper {
 }
 
 // just write plainly to stderr
-func WriteErrorsToStderr(helper *BaseHelper, name string, e error) {
+func WriteErrorsToStderr(name string, e error) {
 	io.WriteString(os.Stderr, "error with: " + name + ": " + e.Error())
 }
 
 // ignore errors. doesn't lift a finger.
-func IgnoreErrors(helper *BaseHelper, name string, e error) { }
+func IgnoreErrors(name string, e error) { }

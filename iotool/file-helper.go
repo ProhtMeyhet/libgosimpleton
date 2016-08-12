@@ -26,6 +26,9 @@ type FileHelper struct {
 	// turn off checking if it's a directory. one syscall less, but the caller has to do the work.
 	doNotTestForDirectory		bool
 
+	// the read size for a buffer for io.Reader
+	readSize			int
+
 	// reset all file advices
 	fileAdviceNormal		bool
 
@@ -59,6 +62,7 @@ func newFileHelper() *FileHelper {
 	// FIXME onE
 	helper.BaseHelper.Initialise(abstract.IgnoreErrors)
 	helper.WorkerHelper.Initialise()
+	helper.readSize = READ_BUFFER_SIZE
 	return helper
 }
 
@@ -127,8 +131,9 @@ func (helper *FileHelper) ResetFileAdvice(to FileInterface) {
 
 // copy several values from a helper
 func (helper *FileHelper) Copy(from interface{}) *FileHelper {
-	helper.BaseHelper.Copy(from)
-	helper.WorkerHelper.Copy(from)
+	// FIXME
+//	helper.BaseHelper.Copy(from)
+//	helper.WorkerHelper.Copy(from)
 
 	if fileHelper, ok := from.(*FileHelper); ok {
 		helper.fileAdviceNormal = fileHelper.fileAdviceNormal
@@ -137,8 +142,26 @@ func (helper *FileHelper) Copy(from interface{}) *FileHelper {
 		helper.fileAdviceWillNeed = fileHelper.fileAdviceWillNeed
 		helper.fileAdviceDontNeed = fileHelper.fileAdviceDontNeed
 		helper.fileAdviceNoReuse = fileHelper.fileAdviceNoReuse
+
+		if fileHelper.HasAppend() { helper.ToggleAppend() }
+		if fileHelper.HasExclusive() { helper.ToggleExclusive() }
+		if fileHelper.HasSynchronous() { helper.ToggleSynchronous() }
+		if fileHelper.HasTruncate() { helper.ToggleTruncate() }
 	}
 
+	return helper
+}
+
+// get read size
+func (helper *FileHelper) ReadSize() int {
+	return helper.readSize
+}
+
+func (helper *FileHelper) SetReadSize(to int) *FileHelper {
+	// it wasn't a very wise decision to use signed ints for lengths...
+	if to > 0 {
+		helper.readSize = to
+	}
 	return helper
 }
 
