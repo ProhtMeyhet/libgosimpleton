@@ -6,8 +6,6 @@ import(
 	"io/ioutil"
 	"path/filepath"
 	"time"
-
-	"github.com/ProhtMeyhet/libgosimpleton/abstract"
 )
 
 func TestOpen(t *testing.T) {
@@ -91,7 +89,7 @@ func TestTroll(t *testing.T) {
 			}
 
 	errorCount := 0
-	helper.SetE(func(base *abstract.BaseHelper, file string, e error) {
+	helper.SetE(func(path string, e error) {
 		errorCount++
 	})
 
@@ -135,8 +133,8 @@ func testOpen(t *testing.T, filename string) (file FileInterface) {
 }
 
 func testOpenFiles(t *testing.T, helper *FileHelper, fileList ...string) (files []FileInterface) {
-	helper.SetE(func(base *abstract.BaseHelper, file string, e error) {
-		t.Errorf("unexpected open error on '%v': %v", file, e)
+	helper.SetE(func(path string, e error) {
+		t.Errorf("unexpected open error on '%v': %v", path, e)
 	})
 	for file := range OpenFiles(helper, fileList...) {
 		testReadFile(t, file)
