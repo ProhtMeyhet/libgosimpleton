@@ -134,11 +134,7 @@ func CloseFilesFromChannel(fileHelper *FileHelper, fileList chan FileInterface) 
 
 
 /* convinience functions */
-// TODO add more
 
-func Remove(handler FileInterface) error {
-	return os.Remove(handler.Name())
-}
 
 // use FileHelper.ToggleTruncate(), otherwise os.Truncate().
 // func Truncate(handler FileInterface, size int64) error {}
