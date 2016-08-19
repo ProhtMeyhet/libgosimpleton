@@ -27,8 +27,6 @@ infinite:
 			break infinite
 		}
 
-	// FIXME i thought the following line would copy. doesn't seem to be or bug.
-	//	buffer <-handlerBuffer[:read]
 		buffers <-namedBuffer
 	}
 
