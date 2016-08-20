@@ -12,8 +12,9 @@ type NamedBuffer struct {
 }
 
 // shiny and fresh
-func NewNamedBuffer(aname string) (namedBuffer NamedBuffer) {
-	namedBuffer = NamedBuffer{ name: aname }
+func NewNamedBuffer(aname string, asize uint) (namedBuffer *NamedBuffer) {
+	namedBuffer = &NamedBuffer{ name: aname }
+	namedBuffer.buffer = make([]byte, asize)
 	return
 }
 
@@ -27,12 +28,17 @@ func (buffer *NamedBuffer) Bytes() []byte {
 	return buffer.buffer[:buffer.read]
 }
 
+// returns the bytes read as string
+func (buffer *NamedBuffer) String() string {
+	return string(buffer.buffer[:buffer.read])
+}
+
 // returns if this file is done
 func (buffer *NamedBuffer) Done() bool {
 	return buffer.done
 }
 
 // returns the number of bytes read
-func (buffer *NamedBuffer)Read() int {
+func (buffer *NamedBuffer) Read() int {
 	return buffer.read
 }

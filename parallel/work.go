@@ -75,7 +75,7 @@ func (work *Work) Initialise(aworkers uint) {
 // worker is really the last finishing (which can mean, that workers still
 // processing work can be interrupted and shut down by program termination).
 func (work *Work) Run(worker func()) {
-	if work.workers > 0 {
+	if work.workers > 1 { println("what the fuck you?")
 		for i := uint(0); i < work.workers -1; i++ {
 			go worker()
 		}

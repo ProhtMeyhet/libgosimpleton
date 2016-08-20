@@ -56,14 +56,13 @@ func (reader *LimitReader) Read(readInto []byte) (read int, e error) {
 		reader.buffered = bytes.NewBuffer(readBytes)
 		return reader.buffered.Read(readInto)
 	}
-
-	copy(readInto, readBytes[:len(readBytes)])
+	copy(readInto, readBytes[:])
 	return len(readBytes), nil
 }
 
 
 // read maximum n lines
-func NewLimitLineReader(areader io.Reader, amaxLines uint) (reader *LimitReader) {
+func NewLimitLinesReader(areader io.Reader, amaxLines uint) (reader *LimitReader) {
 	scanner := bufio.NewScanner(areader)
 	scanner.Split(bufio.ScanLines)
 	reader = NewLimitReader(areader, amaxLines, scanner, []byte("\n"))
@@ -71,7 +70,7 @@ func NewLimitLineReader(areader io.Reader, amaxLines uint) (reader *LimitReader)
 }
 
 // read maximum n words
-func NewLimitWordReader(areader io.Reader, amaxLines uint) (reader *LimitReader) {
+func NewLimitWordsReader(areader io.Reader, amaxLines uint) (reader *LimitReader) {
 	scanner := bufio.NewScanner(areader)
 	scanner.Split(bufio.ScanWords)
 	reader = NewLimitReader(areader, amaxLines, scanner, []byte(" "))
@@ -87,7 +86,7 @@ func NewLimitBytesReader(areader io.Reader, amaxLines uint) (reader *LimitReader
 }
 
 // read maximum n runes
-func NewLimitRuneReader(areader io.Reader, amaxLines uint) (reader *LimitReader) {
+func NewLimitRunesReader(areader io.Reader, amaxLines uint) (reader *LimitReader) {
 	scanner := bufio.NewScanner(areader)
 	scanner.Split(bufio.ScanRunes)
 	reader = NewLimitReader(areader, amaxLines, scanner, []byte(""))

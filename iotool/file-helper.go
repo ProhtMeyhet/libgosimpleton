@@ -27,6 +27,7 @@ type FileHelper struct {
 	doNotTestForDirectory		bool
 
 	// the read size for a buffer for io.Reader
+	// FIXME -> uint
 	readSize			int
 
 	// reset all file advices

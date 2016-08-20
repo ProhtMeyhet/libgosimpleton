@@ -10,7 +10,7 @@ import(
 func TestLimitReader(t *testing.T) {
 	buffer := bytes.NewBuffer(make([]byte, 0))
 	buffer.Write(getData()); total := make([]byte, 0)
-	limited := NewLimitLineReader(buffer, 14); into := make([]byte, 32)
+	limited := NewLimitLinesReader(buffer, 14); into := make([]byte, 32)
 	for {
 		read, e := limited.Read(into)
 		if e != nil {
@@ -30,8 +30,7 @@ func TestLimitReader(t *testing.T) {
 }
 
 func getData() []byte {
-	return []byte(""+
-`
+	return []byte(`
 The Raven
 Once upon a midnight dreary, while I pondered, weak and weary,
 Over many a quaint and curious volume of forgotten lore—
