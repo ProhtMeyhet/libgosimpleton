@@ -1,9 +1,11 @@
 package iotool
 
 const(
-	DEBUG = false
+	DEBUG			= false
 
-	PREFIX_SEPARATOR = "_"
+	PREFIX_SEPARATOR	= "_"
+
+	STDIN_TOKEN		= "-"
 
 	// the smallest read for an io.Reader buffer
 	READ_BUFFER_SMALL_SIZE		= 512

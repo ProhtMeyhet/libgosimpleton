@@ -3,6 +3,7 @@ package iotool
 // +build linux
 
 import(
+	"io"
 	"os"
 
 	"golang.org/x/sys/unix"
@@ -29,6 +30,15 @@ type FileHelper struct {
 	// the read size for a buffer for io.Reader
 	// FIXME -> uint
 	readSize			int
+
+	// toggled by setting stdout and stdin
+	supportCli			bool
+	// must not be empty!
+	stdinToken			string
+	stdout				io.Writer
+	stdin				io.Reader
+	// as a special case also support stderr
+	stderr				io.Writer
 
 	// reset all file advices
 	fileAdviceNormal		bool
@@ -164,6 +174,45 @@ func (helper *FileHelper) SetReadSize(to int) *FileHelper {
 		helper.readSize = to
 	}
 	return helper
+}
+
+func (helper *FileHelper) SupportCli() bool {
+	return helper.supportCli
+}
+
+// toggle supportCli by setting STDIN and STDOUT in SetStdinStdout()
+
+func (helper *FileHelper) IsStdinToken(what string) bool {
+	return helper.stdinToken == what
+}
+
+func (helper *FileHelper) Stdin() io.Reader {
+	return helper.stdin
+}
+
+func (helper *FileHelper) Stdout() io.Writer {
+	return helper.stdout
+}
+
+func (helper *FileHelper) Stderr() io.Writer {
+	return helper.stderr
+}
+
+// only support supplying both
+func (helper *FileHelper) SetStdinStdout(astdinToken string, astdin io.Reader, astdout io.Writer) {
+	helper.supportCli = true
+	// disallow empty value
+	if astdinToken != "" {
+		helper.stdinToken = astdinToken
+	} else {
+		helper.stdinToken = STDIN_TOKEN
+	}
+	helper.stdin = astdin
+	helper.stdout = astdout
+}
+
+func (helper *FileHelper) SetStderr(astderr io.Writer) {
+	helper.stderr = astderr
 }
 
 // sets to read only and discards all other flags

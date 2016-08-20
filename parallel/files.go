@@ -107,8 +107,7 @@ func ReadFilesSequential(helper *iotool.FileHelper, paths []string, worker func(
 func ReadFilesFilteredSequential(helper *iotool.FileHelper, paths []string,
 					filter func(reader io.Reader) io.Reader, worker func(chan *iotool.NamedBuffer)) {
 	work := NewWorkManual(1); handlers := make(chan io.Reader, work.SuggestBufferSize(0))
-	ihandlers := make(chan io.Reader, 0); helper.ToggleFileAdviceWillNeed()
-	if !helper.ShouldFileAdviceWillNeed() { helper.ToggleFileAdviceWillNeed() }
+	ihandlers := make(chan io.Reader, 0); if !helper.ShouldFileAdviceWillNeed() { helper.ToggleFileAdviceWillNeed() }
 
 	// in one thread open files. this allows parallel open syscalls.
 	work.Feed(func() {
@@ -141,11 +140,14 @@ func ReadFilesFilteredSequential(helper *iotool.FileHelper, paths []string,
 // read one file sequential
 func readFileSequential(helper *iotool.FileHelper, reader io.Reader, innerWorker func(chan *iotool.NamedBuffer)) {
 	work := NewWorkManual(0); buffers := make(chan *iotool.NamedBuffer, work.SuggestFileBufferSize())
+
+	// read in one thread
 	work.Feed(func() {
 		iotool.ReadIntoBuffer(helper, reader, buffers)
 		close(buffers)
 	})
 
+	// do work in another
 	work.Run(func() {
 		innerWorker(buffers)
 	})

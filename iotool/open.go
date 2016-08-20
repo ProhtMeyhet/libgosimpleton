@@ -15,10 +15,9 @@ var random *rand.Rand
 // open a file with FileHelper. if its a dir, return nil.
 // it's your responsibility to close the file...
 func Open(fileHelper *FileHelper, path string) (handler FileInterface, e error) {
-	// FIXME TODO
-/*	if path == abstract.STDIN_TOKEN {
-		return NewFakeStdFile(fileHelper.Stdin(), fileHelper.Stdout())
-	}*/
+	if fileHelper.SupportCli() && fileHelper.IsStdinToken(path) {
+		return NewFakeStdFile(fileHelper.Stdin(), fileHelper.Stdout()), nil
+	}
 
 	handler, e = os.OpenFile(path, fileHelper.OpenFlags(), fileHelper.Permissions())
 	if e != nil { fileHelper.RaiseError(path, e); goto out }
