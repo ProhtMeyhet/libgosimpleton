@@ -101,7 +101,7 @@ func ReadFilesSequential(helper *iotool.FileHelper, paths []string, worker func(
 // 	}
 // })
 
-// read files sequential to a buffer
+// read files sequential to a buffer.
 // uses file advice will need and thus relies on kernel page caching. this is good
 // for being a team player, but may hurt performance especially in syntethic tests.
 func ReadFilesFilteredSequential(helper *iotool.FileHelper, paths []string,
@@ -109,7 +109,7 @@ func ReadFilesFilteredSequential(helper *iotool.FileHelper, paths []string,
 	work := NewWorkManual(1); handlers := make(chan io.Reader, work.SuggestBufferSize(0))
 	ihandlers := make(chan io.Reader, 0); if !helper.ShouldFileAdviceWillNeed() { helper.ToggleFileAdviceWillNeed() }
 
-	// in one thread open files. this allows parallel open syscalls.
+	// in one thread open files. this allows parallel open syscalls (and file advice).
 	work.Feed(func() {
 		for _, path := range paths {
 			handler, e := iotool.Open(helper, path)

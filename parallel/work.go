@@ -69,13 +69,10 @@ func (work *Work) Initialise(aworkers uint) {
 	}
 }
 
-// start workers - 1 in separate goroutines and run one
-// worker in this goroutine. the worker should block till the work is done.
-// it is not guaranteed that all work will be processed nor that the last
-// worker is really the last finishing (which can mean, that workers still
-// processing work can be interrupted and shut down by program termination).
+// @interface
+// start workers - 1 in separate goroutines and run one in this goroutine.
 func (work *Work) Run(worker func()) {
-	if work.workers > 1 { println("what the fuck you?")
+	if work.workers > 1 {
 		for i := uint(0); i < work.workers -1; i++ {
 			go worker()
 		}
