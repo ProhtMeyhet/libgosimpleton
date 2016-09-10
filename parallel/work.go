@@ -55,7 +55,14 @@ func NewWorkManual(aworkers uint) (work *Work) {
 }
 
 // New York Finally
-func NewWorkFinally(aworkers uint, afinally func()) (work *Work) {
+func NewWorkFinally(amaxworkers uint, afinally func()) (work *Work) {
+	work = &Work{ finallyFunc: afinally }
+	work.Initialise(SuggestNumberOfWorkers(amaxworkers))
+	return
+}
+
+// New York Finally with manual setting of workers
+func NewWorkFinallyManual(aworkers uint, afinally func()) (work *Work) {
 	work = &Work{ finallyFunc: afinally }
 	work.Initialise(aworkers)
 	return
@@ -116,7 +123,7 @@ func (work *Work) start(worker func()) {
 // via Do(), Start() or Run().
 func (work *Work) Feed(feeder func()) {
 	go func() {
-		defer work.RecoverSendOnClosedChannel()
+		defer RecoverClosedChannel()
 		feeder()
 	}()
 }
@@ -128,7 +135,7 @@ func (work *Work) Tick(duration time.Duration, tick func()) (cancel chan bool) {
 	cancel = make(chan bool, 1)
 
 	go func() {
-		defer work.RecoverSendOnClosedChannel()
+		defer RecoverClosedChannel()
 	infinite:
 		for {
 			select {
@@ -145,18 +152,20 @@ func (work *Work) Tick(duration time.Duration, tick func()) (cancel chan bool) {
 }
 
 // recover the panic 'send on closed channel' and ignore it. otherwise panic some more.
-func (work *Work) RecoverSendOnClosedChannel() {
+func RecoverClosedChannel() {
 	// be safe for the future
 	recovered := recover(); if recovered != nil {
 		if e, ok := recovered.(error); ok {
-			if e.Error() != "send on closed channel" {
+			if e.Error() != "send on closed channel" &&
+				e.Error() != "close of closed channel" {
 				panic(e)
 			}
 		}
 	}
 
 	if e, ok := recovered.(string); ok {
-		if e != "send on closed channel" {
+		if e != "send on closed channel" &&
+			e != "close of closed channel" {
 			panic(e)
 		}
 	}

@@ -26,6 +26,11 @@ func Remove(handler FileInterface) error {
 	return os.Remove(handler.Name())
 }
 
+func IsDirectoryE(e error) bool {
+	if e == nil { return false }
+	message := e.Error()
+	return message == IsDirectoryError.Error() || len(message) >= 14 && message[len(message)-14:] == "is a directory"
+}
 
 //TODO simplee for now mirror os functions
 func IsExist(e error) bool {

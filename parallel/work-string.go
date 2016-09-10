@@ -10,7 +10,7 @@ type WorkString struct {
 	Talk	chan string
 }
 
-func NewStringFeeder(list []string) (work *WorkString) {
+func NewStringsFeeder(list ...string) (work *WorkString) {
 	work = &WorkString{}
 	work.Initialise(SuggestNumberOfWorkers(uint(len(list))))
 	work.Talk = make(chan string, work.SuggestBufferSize(uint(len(list))))

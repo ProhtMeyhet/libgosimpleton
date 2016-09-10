@@ -10,10 +10,11 @@ import(
 
 // Test Do(); counting the number of goroutines started; Do works with a waitGroup.
 func TestDo(t *testing.T) {
-	count, numberOfWorkers, finallyCalled := uint(0), SuggestNumberOfWorkers(), false
+	count, numberOfWorkers, finallyCalled := uint(0), SuggestNumberOfWorkers(0), false
 
+	// for test sake, give the number of workers manually. it is suggested to not do so.
 	// the given function is called after all workers finished working.
-	work := NewWorkFinally(numberOfWorkers, func() {
+	work := NewWorkFinallyManual(numberOfWorkers, func() {
 		finallyCalled = true
 	})
 
@@ -38,7 +39,7 @@ func TestDo(t *testing.T) {
 
 // Test feeding a group of workers with an integer list to sum it up.
 func TestStartFeed(t *testing.T) {
-	count, numberOfWorkers := 0, SuggestNumberOfWorkers()
+	count, numberOfWorkers := 0, SuggestNumberOfWorkers(0)
 	countList, sum := []int{ 1, 5, 15, 0 }, 21
 	// the communication between goroutines is done via this channel.
 	// make the channel buffered so the feeder does not have to block until
@@ -88,7 +89,7 @@ func TestStartFeed(t *testing.T) {
 // try the tick work. very slow.
 // TODO test the tick
 func TestTick(t *testing.T) {
-	count, iterations, numberOfWorkers := uint32(0), uint64(0), SuggestNumberOfWorkers()
+	count, iterations, numberOfWorkers := uint32(0), uint64(0), SuggestNumberOfWorkers(0)
 	timeout := 1 * time.Second
 	// the communication between goroutines is done via this channel.
 	// make the channel buffered so the feeder does not have to block until
@@ -142,8 +143,7 @@ func TestTick(t *testing.T) {
 
 // test the run work. fast.
 func TestRun(t *testing.T) {
-	timeout := 1 * time.Second
-	numberOfWorkers := SuggestNumberOfWorkers()
+	timeout := 1 * time.Second; numberOfWorkers := SuggestNumberOfWorkers(0)
 
 	testRun(t, numberOfWorkers, timeout)
 }
@@ -151,7 +151,7 @@ func TestRun(t *testing.T) {
 // FIXME: fixme
 func BenchmarkRun(b *testing.B) {
 	timeout := 1 * time.Second
-	numberOfWorkers := SuggestNumberOfWorkers()
+	numberOfWorkers := SuggestNumberOfWorkers(0)
 
 	testRun(b, numberOfWorkers, timeout)
 }
@@ -288,7 +288,7 @@ func TestPanic(t *testing.T) {
 // JUST FOR TESTING, BAD EXAMPLE!
 // same as TestDo, but with busy waiting!
 func TestDo2(t *testing.T) {
-	count, numberOfWorkers := uint(0), SuggestNumberOfWorkers()
+	count, numberOfWorkers := uint(0), SuggestNumberOfWorkers(0)
 
 	// the worker
 	work := NewWork(numberOfWorkers)

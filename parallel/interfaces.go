@@ -35,9 +35,6 @@ type WorkInterface interface {
 	// after duration, call cancel function
 	Timeout(duration time.Duration, cancel func())
 
-	// ignore the panic "send on closed channel"
-	RecoverSendOnClosedChannel()
-
 	// suggest a buffer size, best according to number of CPUs
 	SuggestBufferSize(max uint) uint
 

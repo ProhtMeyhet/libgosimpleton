@@ -18,7 +18,11 @@ func ReadIntoBuffer(helper *FileHelper, reader io.Reader, buffers chan *NamedBuf
 
 // read reader into a channel buffer; set the read size in helper. error handling can also be done via helper
 func readIntoBuffer(helper *FileHelper, name string, reader io.Reader, buffers chan *NamedBuffer) (e error) {
-	namedBuffer := NewNamedBuffer(name, uint(helper.ReadSize()))
+	cancel := make(chan bool, 1)
+	namedBuffer := NewNamedBuffer(name, uint(helper.ReadSize()), buffers, cancel)
+	startBuffer := NewNamedBuffer(name, 1, buffers, cancel); startBuffer.next = true
+
+	buffers <-startBuffer
 
 infinite:
 	for {
@@ -29,11 +33,17 @@ infinite:
 			break infinite
 		}
 		buffers <-namedBuffer
-		namedBuffer = NewNamedBuffer(name, uint(helper.ReadSize()))
+		namedBuffer = NewNamedBuffer(name, uint(helper.ReadSize()), buffers, cancel)
+
+		select {
+		case <-cancel:
+			break
+		default:
+		}
 	}
 
-	namedBuffer.done = true
-	buffers <-namedBuffer
+	doneBuffer := NewNamedBuffer(name, 1, buffers, cancel); doneBuffer.done = true
+	buffers <-doneBuffer
 
 	return
 }

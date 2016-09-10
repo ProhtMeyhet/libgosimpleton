@@ -5,6 +5,7 @@ package iotool
 import(
 	"io"
 	"os"
+	"sync"
 
 	"golang.org/x/sys/unix"
 
@@ -14,6 +15,8 @@ import(
 
 // this struct is used to reduce function parameters.
 type FileHelper struct {
+	sync.Mutex
+
 	// the more help, the better. lots and lots and lots of help needed!
 	abstract.BaseHelper
 	abstract.WorkerHelper
@@ -42,6 +45,12 @@ type FileHelper struct {
 
 	// reset all file advices
 	fileAdviceNormal		bool
+
+	// previous cached stat calls
+					// map[path]os.FileInfo
+	fileInfo			map[string]FileInfoInterface
+//	stats				map[string]os.FileInfo
+//	lstats				map[string]os.FileInfo
 
 	// Access data only once.
 	// FIXME: this is not implemented in the Linux kernel! (maybe doable via madvice?)
@@ -74,6 +83,7 @@ func newFileHelper() *FileHelper {
 	helper.BaseHelper.Initialise(abstract.IgnoreErrors)
 	helper.WorkerHelper.Initialise()
 	helper.readSize = READ_BUFFER_SIZE
+	helper.fileInfo = make(map[string]FileInfoInterface)
 	return helper
 }
 
@@ -96,8 +106,9 @@ func ReadAndWrite() *FileHelper {
 }
 
 // set the file advices on file descriptors (fd). ignore all errors (just like coreutils does)
-// s390-64 (s390-64) is ignored
 func (helper *FileHelper) ApplyFileAdvice(to FileInterface) {
+	if to == nil { return }
+
 	fd := int(to.Fd())
 
 	if helper.fileAdviceNormal {
@@ -155,9 +166,16 @@ func (helper *FileHelper) Copy(from interface{}) *FileHelper {
 		helper.fileAdviceNoReuse = fileHelper.fileAdviceNoReuse
 
 		if fileHelper.HasAppend() { helper.ToggleAppend() }
+		if fileHelper.HasCreate() { helper.ToggleCreate() }
 		if fileHelper.HasExclusive() { helper.ToggleExclusive() }
 		if fileHelper.HasSynchronous() { helper.ToggleSynchronous() }
 		if fileHelper.HasTruncate() { helper.ToggleTruncate() }
+
+		for key := range fileHelper.fileInfo {
+			if _, ok := helper.fileInfo[key]; !ok {
+				helper.fileInfo[key] = fileHelper.fileInfo[key]
+			}
+		}
 	}
 
 	return helper
@@ -174,6 +192,22 @@ func (helper *FileHelper) SetReadSize(to int) *FileHelper {
 		helper.readSize = to
 	}
 	return helper
+}
+
+// FIXME: correct lstat cache
+func (helper *FileHelper) FileInfo(path string, lstat bool) (FileInfoInterface, error) {
+	var e error
+	if _, ok := helper.fileInfo[path]; !ok {
+		var info os.FileInfo
+		if lstat {
+			info, e = os.Lstat(path); if e != nil { return nil, e }
+		} else {
+			info, e = os.Stat(path); if e != nil { return nil, e }
+		}
+		helper.Lock(); helper.fileInfo[path] = NewFileInfo(path, info); helper.Unlock()
+	}
+
+	return helper.fileInfo[path], e
 }
 
 func (helper *FileHelper) SupportCli() bool {

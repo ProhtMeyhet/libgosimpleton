@@ -19,13 +19,15 @@ func Open(fileHelper *FileHelper, path string) (handler FileInterface, e error) 
 		return NewFakeStdFile(fileHelper.Stdin(), fileHelper.Stdout()), nil
 	}
 
+	if !fileHelper.DoNotTestForDirectory() {
+		fileInfo, ie := fileHelper.FileInfo(path, false); if ie == nil && fileInfo.IsDir() {
+			e = IsDirectoryError; fileHelper.RaiseError(path, e); goto out
+		}
+	}
+
 	handler, e = os.OpenFile(path, fileHelper.OpenFlags(), fileHelper.Permissions())
 	if e != nil { fileHelper.RaiseError(path, e); goto out }
-	if !fileHelper.DoNotTestForDirectory() {
-		// ie := darn shadowing...
-		fileInfo, ie := handler.Stat(); if ie != nil { e = ie; fileHelper.RaiseError(path, ie); goto out }
-		if fileInfo.IsDir() { e = IsDirectoryError; fileHelper.RaiseError(path, e); goto out }
-	}
+
 	fileHelper.ApplyFileAdvice(handler)
 
 out:

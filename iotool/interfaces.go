@@ -25,3 +25,25 @@ type FileInterface interface {
 	WriteString(s string) (n int, err error)
 	Close() error
 }
+
+type FileInfoInterface interface {
+	os.FileInfo
+
+	// the originally given path
+	Path() string
+
+	// is same file
+	Same(compare os.FileInfo) bool
+
+	// user info
+	Owner() string
+	Username() string
+	UserId() int
+
+	// group info
+	Group() string
+	GroupId() int
+
+	// is executeable
+	IsExecuteable() bool
+}

@@ -16,10 +16,10 @@ a = a[:len(a)-j+i]
 
 PARALLEL
 --------
-Currently only the work type is implemented:
+Do some work in parallel:
 
 ```go
-work, count := parallel.NewWork(16), 0
+work, count := parallel.NewWorkManual(16), 0
 work.Do(func() {
 	work.Lock()
 	count++
@@ -27,6 +27,34 @@ work.Do(func() {
 })
 
 println(count) // prints 16
+```
+
+Open a file, read in one thread do your function in another thread:
+```go
+// work := OpenFileDoWork(helper, path, func(buffers chan NamedBuffer) {
+// 	for buffered := range buffers {
+//		if buffered.Done() {
+//			fmt.Println("done!")
+//			continue
+//		}
+// 		/* do work */
+// 	}
+// })
+//
+// work.Wait()
+```
+Open and read N files parallel, do your work in another thread:
+
+```go
+OpenFilesFromListDoWork(helper, func(buffers chan NamedBuffer) {
+ 	for buffered := range buffers {
+		if buffered.Done() {
+			fmt.Println("done!")
+			continue
+		}
+ 		/* do work */
+ 	}
+}, path1, path2, paths...).Wait()
 ```
 
 IOTOOL

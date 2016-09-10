@@ -7,7 +7,7 @@ import(
 	"github.com/ProhtMeyhet/libgosimpleton/simpleton"
 )
 
-// OpenFileDoWork(helper, path, func(buffers chan NamedBuffer) {
+// work := OpenFileDoWork(helper, path, func(buffers chan NamedBuffer) {
 // 	for buffered := range buffers {
 //		if buffered.Done() {
 //			fmt.Println("done!")
@@ -16,11 +16,14 @@ import(
 // 		/* do work */
 // 	}
 // })
+//
+// work.Wait()
 
 // Open File and Do Work
-func OpenFileDoWork(helper *iotool.FileHelper, path string, worker func(chan *iotool.NamedBuffer)) {
+func OpenFileDoWork(helper *iotool.FileHelper, path string, worker func(chan *iotool.NamedBuffer)) (work WorkInterface) {
+	// TODO reuse buffers chan
 	// use 1 inner worker, see below
-	work := NewWorkManual(1); buffers := make(chan *iotool.NamedBuffer, work.SuggestFileBufferSize())
+	work = NewWorkManual(1); buffers := make(chan *iotool.NamedBuffer, work.SuggestFileBufferSize())
 
 	// read in one thread
 	work.Feed(func() {
@@ -29,12 +32,14 @@ func OpenFileDoWork(helper *iotool.FileHelper, path string, worker func(chan *io
 	})
 
 	// work in another
-	work.Run(func() {
+	work.Start(func() {
 		worker(buffers)
 	})
+
+	return
 }
 
-// OpenFilesDoWork(helper, paths, func(buffers chan NamedBuffer) {
+// work := OpenFilesDoWork(helper, paths, func(buffers chan NamedBuffer) {
 // 	for buffered := range buffers {
 //		if buffered.Done() {
 //			fmt.Println("done!")
@@ -43,20 +48,22 @@ func OpenFileDoWork(helper *iotool.FileHelper, path string, worker func(chan *io
 // 		/* do work */
 // 	}
 // })
+//
+// work.Wait()
 
 // Open N Files and Do Work
-func OpenFilesDoWork(helper *iotool.FileHelper, paths <-chan string, worker func(chan *iotool.NamedBuffer)) {
-	work := NewWork(0)
+func OpenFilesDoWork(helper *iotool.FileHelper, paths <-chan string, worker func(chan *iotool.NamedBuffer)) (work WorkInterface) {
+	work = NewWork(0)
 
-	// feed is list
+	// feed is chan
 
 	work.Start(func() {
 		for path := range paths {
-			OpenFileDoWork(helper, path, worker)
+			OpenFileDoWork(helper, path, worker).Wait()
 		}
 	})
 
-	work.Wait()
+	return
 }
 
 // OpenFilesFromListDoWork(helper, func(buffers chan NamedBuffer) {
@@ -67,11 +74,11 @@ func OpenFilesDoWork(helper *iotool.FileHelper, paths <-chan string, worker func
 //		}
 // 		/* do work */
 // 	}
-// }, path1, path2, paths...)
+// }, path1, path2, paths...).Wait()
 
 // Open N Files and Do Work
-func OpenFilesFromListDoWork(helper *iotool.FileHelper, worker func(chan *iotool.NamedBuffer), paths ...string) {
-	OpenFilesDoWork(helper, simpleton.StringListToChannel(paths...), worker)
+func OpenFilesFromListDoWork(helper *iotool.FileHelper, worker func(chan *iotool.NamedBuffer), paths ...string) (work WorkInterface) {
+	return OpenFilesDoWork(helper, simpleton.StringListToChannel(paths...), worker)
 }
 
 // ReadFilesSequential(helper, path, func(buffers chan NamedBuffer) {
@@ -82,11 +89,11 @@ func OpenFilesFromListDoWork(helper *iotool.FileHelper, worker func(chan *iotool
 //		}
 // 		/* do work */
 // 	}
-// })
+// }).Wait()
 
 // read files sequential to a buffer
-func ReadFilesSequential(helper *iotool.FileHelper, paths []string, worker func(chan *iotool.NamedBuffer)) {
-	ReadFilesFilteredSequential(helper, paths, nil, worker)
+func ReadFilesSequential(helper *iotool.FileHelper, paths []string, worker func(chan *iotool.NamedBuffer)) (work WorkInterface) {
+	return ReadFilesFilteredSequential(helper, paths, nil, worker)
 }
 
 // ReadFilesFilteredSequential(helper, paths, func(reader io.Reader) {
@@ -105,8 +112,8 @@ func ReadFilesSequential(helper *iotool.FileHelper, paths []string, worker func(
 // uses file advice will need and thus relies on kernel page caching. this is good
 // for being a team player, but may hurt performance especially in syntethic tests.
 func ReadFilesFilteredSequential(helper *iotool.FileHelper, paths []string,
-					filter func(reader io.Reader) io.Reader, worker func(chan *iotool.NamedBuffer)) {
-	work := NewWorkManual(1); handlers := make(chan io.Reader, work.SuggestBufferSize(0))
+		filter func(reader io.Reader) io.Reader, worker func(chan *iotool.NamedBuffer)) (work WorkInterface) {
+	work = NewWorkManual(1); handlers := make(chan io.Reader, work.SuggestBufferSize(0))
 	ihandlers := make(chan io.Reader, 0); if !helper.ShouldFileAdviceWillNeed() { helper.ToggleFileAdviceWillNeed() }
 
 	// in one thread open files. this allows parallel open syscalls (and file advice).
@@ -126,7 +133,7 @@ func ReadFilesFilteredSequential(helper *iotool.FileHelper, paths []string,
 	})
 
 	// and now read it
-	work.Run(func() {
+	work.Start(func() {
 		for handler := range ihandlers {
 			if filter != nil {
 				handler = filter(handler)
@@ -135,6 +142,8 @@ func ReadFilesFilteredSequential(helper *iotool.FileHelper, paths []string,
 			readFileSequential(helper, handler, worker)
 		}
 	})
+
+	return
 }
 
 // read one file sequential

@@ -47,6 +47,10 @@ func (helper *BaseHelper) SetE(to func(string, error)) *BaseHelper {
 	return helper
 }
 
+func (helper *BaseHelper) E() func(string, error) {
+	return helper.onE
+}
+
 // raise an error
 func (helper *BaseHelper) RaiseError(name string, e error) {
 	if helper.onE != nil {
