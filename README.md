@@ -31,17 +31,17 @@ println(count) // prints 16
 
 Open a file, read in one thread do your function in another thread:
 ```go
-// work := OpenFileDoWork(helper, path, func(buffers chan NamedBuffer) {
-// 	for buffered := range buffers {
-//		if buffered.Done() {
-//			fmt.Println("done!")
-//			continue
-//		}
-// 		/* do work */
-// 	}
-// })
-//
-// work.Wait()
+work := OpenFileDoWork(helper, path, func(buffers chan NamedBuffer) {
+ 	for buffered := range buffers {
+		if buffered.Done() {
+			fmt.Println("done!")
+			continue
+		}
+ 		/* do work */
+ 	}
+})
+
+work.Wait()
 ```
 Open and read N files parallel, do your work in another thread:
 
