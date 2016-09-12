@@ -1,28 +1,23 @@
 package iotool
 
 import(
-
+	"io"
 )
 
 type NamedBuffer struct {
+	*io.PipeReader
+	*io.PipeWriter
+
 	name	string
 	key	uint
 
-	buffer	[]byte
-	done	bool
-	next	bool
-	read	int
-	buffers chan *NamedBuffer
-	cancel	chan bool
 	isCanceled bool
 }
 
 // shiny and fresh
-func NewNamedBuffer(aname string, asize uint, abuffers chan *NamedBuffer, acancel chan bool) (namedBuffer *NamedBuffer) {
+func NewNamedBuffer(aname string) (namedBuffer *NamedBuffer) {
 	namedBuffer = &NamedBuffer{ name: aname }
-	namedBuffer.buffer = make([]byte, asize)
-	namedBuffer.cancel = acancel
-	namedBuffer.buffers = abuffers
+	namedBuffer.PipeReader, namedBuffer.PipeWriter = io.Pipe()
 	return
 }
 
@@ -36,38 +31,18 @@ func (buffer *NamedBuffer) Key() uint {
 	return buffer.key
 }
 
-// returns the bytes read
-func (buffer *NamedBuffer) Bytes() []byte {
-	return buffer.buffer[:buffer.read]
-}
-
-// returns the bytes read as string
-func (buffer *NamedBuffer) String() string {
-	return string(buffer.buffer[:buffer.read])
-}
-
-// is this buffer channel reused
-func (buffer *NamedBuffer) Next() bool {
-	return buffer.next
-}
-
-// returns if this file is done
-func (buffer *NamedBuffer) Done() bool {
-	return buffer.done
-}
-
-// returns the number of bytes read
-func (buffer *NamedBuffer) Read() int {
-	return buffer.read
+func (buffer *NamedBuffer) SetKey(to uint) {
+	buffer.key = to
 }
 
 // cancel reading; clear buffers; blocks till cancel is done
 func (buffer *NamedBuffer) Cancel() {
-	buffer.cancel <-true
 	buffer.isCanceled = true
+	buffer.Close()
+}
 
-	// empty the buffers
-	for _ = range buffer.buffers {}
+func (buffer *NamedBuffer) Close() {
+	buffer.PipeWriter.Close()
 }
 
 func (buffer *NamedBuffer) IsCanceled() bool {

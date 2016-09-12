@@ -31,29 +31,24 @@ println(count) // prints 16
 
 Open a file, read in one thread do your function in another thread:
 ```go
-work := OpenFileDoWork(helper, path, func(buffers chan NamedBuffer) {
- 	for buffered := range buffers {
-		if buffered.Done() {
-			fmt.Println("done!")
-			continue
-		}
+work := OpenFileDoWork(helper, path, func(buffered *NamedBuffer) {
+	into := make([]byte, 512)
+	for {
+		println("reading " + buffered.Name())
+		read, e := buffered.Read(into); if e != nil { /* handle errors and EOF */ }
  		/* do work */
- 	}
+	}
 })
 
 work.Wait()
 ```
-Open and read N files parallel, do your work in another thread:
+hash files, print to Stdout
 
 ```go
-OpenFilesFromListDoWork(helper, func(buffers chan NamedBuffer) {
- 	for buffered := range buffers {
-		if buffered.Done() {
-			fmt.Println("done!")
-			continue
-		}
- 		/* do work */
- 	}
+OpenFilesFromListDoWork(helper, func(buffered *iotool.NamedBuffer) {
+	hasher := sha256.New()
+	io.Copy(hasher, buffered)
+	println(hex.EncodeToString(hasher.Sum(nil)))	
 }, path1, path2, paths...).Wait()
 ```
 

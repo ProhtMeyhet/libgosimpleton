@@ -56,7 +56,7 @@ func (reader *LimitReader) Read(readInto []byte) (read int, e error) {
 		reader.buffered = bytes.NewBuffer(readBytes)
 		return reader.buffered.Read(readInto)
 	}
-	copy(readInto, readBytes[:])
+	copy(readInto[0:], readBytes[0:])
 	return len(readBytes), nil
 }
 
