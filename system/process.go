@@ -5,6 +5,7 @@ import(
 	"path/filepath"
 	"fmt"
 	"os"
+	"os/user"
 	"strconv"
 	"strings"
 
@@ -15,7 +16,13 @@ import(
 type ProcessInfo struct {
 	id				uint64
 	name				string
-	stat				[]byte
+
+	owner				int
+	group				int
+
+	search				string
+	thisUser			*user.User
+	thisUserId			int
 
 	globList			[]string
 	globKey				uint
@@ -45,8 +52,9 @@ type ProcessInfo struct {
 	// itrealvalue
 	relativeStartTime		uint64
 	virtualMemory			uint32
-	residentSetSize			int32
-	softLimitResidentSetSize	uint32
+	// despite otherwise documented, softLimitResidentSetSize is uint64, not uint32 on x86_64
+	residentSetSize			uint64
+	softLimitResidentSetSize	uint64
 	startCode			uint32
 	endCode				uint32
 	startStack			uint32
@@ -75,9 +83,39 @@ func FindProcessByStringId(aid string) (process *ProcessInfo, e error) {
 
 // find processes by name
 func FindProcessesByName(aname string) (processes []*ProcessInfo) {
-	process := &ProcessInfo{ name: aname }
+	process := &ProcessInfo{ search: aname }
 	for process.findByName() {
 		processes = append(processes, process.MakeCopy())
+	}; return
+}
+
+// find current users processes
+func FindMyProcesses() (processes []*ProcessInfo) {
+	process := &ProcessInfo{}
+	for process.findByCurrentUser() {
+		processes = append(processes, process.MakeCopy())
+	}; return
+}
+
+// today is the oldest you've ever been ...
+func FindOldestProcessByName(aname string) (process *ProcessInfo) {
+	list := FindProcessesByName(aname); min := uint64(0)
+	for _, listProcess := range list {
+		if min == 0 || min >= listProcess.relativeStartTime {
+			min = listProcess.relativeStartTime
+			process = listProcess
+		}
+	}; return
+}
+
+// ... and the youngest you'll ever be again
+func FindYoungestProcessByName(aname string) (process *ProcessInfo) {
+	list := FindProcessesByName(aname); max := uint64(0)
+	for _, listProcess := range list {
+		if listProcess.relativeStartTime >= max {
+			max = listProcess.relativeStartTime
+			process = listProcess
+		}
 	}; return
 }
 
@@ -91,23 +129,6 @@ func Self() (process *ProcessInfo) {
 	return
 }
 
-// copy values from a *ProcessInfo
-func (info *ProcessInfo) Copy(from *ProcessInfo) {
-	info.id = from.id; info.name = from.name; info.stat = from.stat
-}
-
-// make a copy of this *ProcessInfo
-func (info *ProcessInfo) MakeCopy() (process *ProcessInfo) {
-	return info.MakeCopyFrom(info)
-}
-
-// copy values from a given *ProcessInfo to a new *ProcessInfo
-func (info *ProcessInfo) MakeCopyFrom(process *ProcessInfo) (processCopy *ProcessInfo) {
-	processCopy = &ProcessInfo{}
-	processCopy.id = process.id; processCopy.name = process.name; processCopy.stat = process.stat
-	return
-}
-
 // find process by id
 func (info *ProcessInfo) findById() (e error) {
 	if info.id == 0 { return INVALID_PROCESS_ID_ERROR }
@@ -118,7 +139,7 @@ func (info *ProcessInfo) findById() (e error) {
 }
 
 // find a process by name. first call gives first result, second call second result ...
-func (info *ProcessInfo) findByName() bool {
+func (info *ProcessInfo) findBy(filter func(*ProcessInfo) bool) bool {
 	if len(info.globList) == 0 { var e error
 		info.globList, e = filepath.Glob(PROC_GLOB); if e != nil { return false }
 	}
@@ -128,24 +149,51 @@ func (info *ProcessInfo) findByName() bool {
 		process, e := FindProcessByStringId(id)
 		// process ended in between
 		if e != nil { continue }
-		if strings.HasPrefix(process.name, info.name) {
+		process.search = info.search
+		if filter(process) {
 			info.globKey++; info.Copy(process); return true
 		}
 	}
 
+	// save memory
+	info.globList = nil; info.globKey = 0
+
 	return false
+}
+
+func (info *ProcessInfo) findByName() bool {
+	return info.findBy(func(process *ProcessInfo) bool {
+		return strings.Contains(process.name, info.search)
+	})
+}
+
+func (info *ProcessInfo) findByCurrentUser() bool {
+	if info.thisUser == nil {
+		thisUser, e := user.Current(); if e != nil { return false }
+		info.thisUserId, _ = strconv.Atoi(thisUser.Uid)
+	}
+	return info.findBy(func(process *ProcessInfo) bool {
+		return info.thisUserId == process.owner
+	})
 }
 
 // scan /proc/[pid]/stat
 func (info *ProcessInfo) scanStat(handler iotool.FileInterface) (e error) {
+	fileInfo, e := handler.Stat(); if e != nil { return }
+	iofileinfo := iotool.NewFileInfo(handler.Name(), fileInfo)
+	info.owner = iofileinfo.UserId(); info.group = iofileinfo.GroupId()
+
 	scanner := bufio.NewScanner(handler); scanner.Split(bufio.ScanWords)
 
+// 1
 	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
 		// pid
 		if info.id == 0 {
 			info.id, e = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
 			if e != nil { return }
 		}
+
+// 2
 	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
 		// name
 		if info.name == "" {
@@ -153,30 +201,94 @@ func (info *ProcessInfo) scanStat(handler iotool.FileInterface) (e error) {
 			info.name = info.name[:len(info.name)-1]
 		}
 
-
 // 3
 	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
 		info.state = string(scanner.Bytes())
 // 4
 	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		toobig, _ := strconv.ParseInt(string(scanner.Bytes()), 10, 0)
+		toobig, _ := strconv.ParseInt(string(scanner.Bytes()), 10, 32)
 		info.parentProcessId = int32(toobig)
 // 5
 	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		toobig, _ = strconv.ParseInt(string(scanner.Bytes()), 10, 0)
+		toobig, _ = strconv.ParseInt(string(scanner.Bytes()), 10, 32)
 		info.processGroupId = int32(toobig)
 // 6
 	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		toobig, _ = strconv.ParseInt(string(scanner.Bytes()), 10, 0)
+		toobig, _ = strconv.ParseInt(string(scanner.Bytes()), 10, 32)
 		info.sessionId = int32(toobig)
 // 7
 	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		toobig, _ = strconv.ParseInt(string(scanner.Bytes()), 10, 0)
+		toobig, _ = strconv.ParseInt(string(scanner.Bytes()), 10, 32)
 		info.tty = int32(toobig)
 // 8
 	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		toobig, _ = strconv.ParseInt(string(scanner.Bytes()), 10, 0)
+		toobig, _ = strconv.ParseInt(string(scanner.Bytes()), 10, 32)
 		info.foregroundProcessId = int32(toobig)
+// 9
+	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
+		utoobig, _ := strconv.ParseUint(string(scanner.Bytes()), 10, 32)
+		info.kernelFlags = uint32(utoobig)
+// 10
+	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
+		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 32)
+		info.memoryMinorFaults = uint32(utoobig)
+// 11
+	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
+		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 32)
+		info.childrenMinorFaults = uint32(utoobig)
+// 12
+	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
+		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 32)
+		info.memoryMajorFaults = uint32(utoobig)
+// 13
+	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
+		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 32)
+		info.childrenMajorFaults = uint32(utoobig)
+// 14
+	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
+		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 32)
+		info.rawUserTime = uint32(utoobig)
+// 15
+	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
+		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 32)
+		info.rawScheduledTime = uint32(utoobig)
+// 16
+	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
+		toobig, _ = strconv.ParseInt(string(scanner.Bytes()), 10, 32)
+		info.rawChildrenUserWaitTime = int32(toobig)
+// 17
+	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
+		toobig, _ = strconv.ParseInt(string(scanner.Bytes()), 10, 32)
+		info.rawChildrenKernelWaitTime = int32(toobig)
+// 18
+	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
+		toobig, _ = strconv.ParseInt(string(scanner.Bytes()), 10, 32)
+		info.priority = int32(toobig)
+// 19
+	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
+		toobig, _ = strconv.ParseInt(string(scanner.Bytes()), 10, 32)
+		info.nice = int32(toobig)
+// 20
+	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
+		toobig, _ = strconv.ParseInt(string(scanner.Bytes()), 10, 32)
+		info.numberOfThreads = int32(toobig)
+// 21
+	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
+		// itrealvalue since kernel 2.6.17, this field is no longer maintained, and is hard coded as 0.
+// 22
+	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
+		info.relativeStartTime, e = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
+// 23
+	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
+		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 32)
+		info.virtualMemory = uint32(utoobig)
+// 24
+	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
+		info.residentSetSize, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
+// 25
+	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
+		info.softLimitResidentSetSize, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
+
 
 
 
@@ -186,91 +298,26 @@ func (info *ProcessInfo) scanStat(handler iotool.FileInterface) (e error) {
 
 
 
-// 9
-	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		utoobig, _ := strconv.ParseUint(string(scanner.Bytes()), 10, 0)
-		info.kernelFlags = uint32(toobig)
-// 10
-	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
-		info.memoryMinorFaults = uint32(toobig)
-// 11
-	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
-		info.childrenMinorFaults = uint32(toobig)
-// 12
-	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
-		info.memoryMajorFaults = uint32(toobig)
-// 13
-	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
-		info.childrenMajorFaults = uint32(toobig)
-// 14
-	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
-		info.rawUserTime = uint32(utoobig)
-// 15
-	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
-		info.rawScheduledTime = uint32(utoobig)
-// 16
-	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		toobig, _ = strconv.ParseInt(string(scanner.Bytes()), 10, 0)
-		info.rawChildrenUserWaitTime = int32(utoobig)
-// 17
-	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		toobig, _ = strconv.ParseInt(string(scanner.Bytes()), 10, 0)
-		info.rawChildrenKernelWaitTime = int32(toobig)
-// 18
-	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		toobig, _ = strconv.ParseInt(string(scanner.Bytes()), 10, 0)
-		info.priority = int32(toobig)
-// 19
-	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		toobig, _ = strconv.ParseInt(string(scanner.Bytes()), 10, 0)
-		info.nice = int32(toobig)
-// 20
-	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		toobig, _ = strconv.ParseInt(string(scanner.Bytes()), 10, 0)
-		info.numberOfThreads = int32(toobig)
-// 21
-	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		// itrealvalue since kernel 2.6.17, this field is no longer maintained, and is hard coded as 0.
-// 22
-	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		info.relativeStartTime, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
-// 23
-	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
-		info.virtualMemory = uint32(toobig)
-// 24
-	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		toobig, _ = strconv.ParseInt(string(scanner.Bytes()), 10, 0)
-		info.residentSetSize = int32(toobig)
-// 25
-	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
-		info.softLimitResidentSetSize = uint32(utoobig)
+
 // 26
 	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
+		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 32)
 		info.startCode = uint32(utoobig)
 // 27
 	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
+		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 32)
 		info.endCode = uint32(utoobig)
 // 28
 	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
+		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 32)
 		info.startStack = uint32(utoobig)
 // 29
 	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
+		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 32)
 		info.espStackPointer = uint32(utoobig)
 // 30
 	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
-		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
+		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 32)
 		info.eipInstructionPointer = uint32(utoobig)
 // 31
 	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
@@ -295,6 +342,129 @@ func (info *ProcessInfo) scanStat(handler iotool.FileInterface) (e error) {
 	return
 }
 
+// make a copy of this *ProcessInfo
+func (info *ProcessInfo) MakeCopy() (process *ProcessInfo) {
+	return info.MakeCopyFrom(info)
+}
+
+// copy values from a given *ProcessInfo to a new *ProcessInfo
+func (info *ProcessInfo) MakeCopyFrom(process *ProcessInfo) (processCopy *ProcessInfo) {
+	processCopy = &ProcessInfo{}; processCopy.Copy(process); return
+}
+
+// copy values from a *ProcessInfo
+func (info *ProcessInfo) Copy(from *ProcessInfo) {
+	info.id = from.id; info.name = from.name; info.search = from.search
+	info.owner = from.owner; info.group = from.group
+
+	info.scanAll			= from.scanAll
+
+	info.state			= from.state
+	info.parentProcessId		= from.parentProcessId
+	info.processGroupId		= from.processGroupId
+	info.sessionId			= from.sessionId
+	info.tty			= from.tty
+	info.foregroundProcessId	= from.foregroundProcessId
+	info.kernelFlags		= from.kernelFlags
+	info.childrenMinorFaults	= from.childrenMinorFaults
+	info.memoryMajorFaults		= from.memoryMajorFaults
+	info.childrenMajorFaults	= from.childrenMajorFaults
+	info.memoryMinorFaults		= from.memoryMinorFaults
+	info.rawUserTime		= from.rawUserTime
+	info.rawScheduledTime		= from.rawScheduledTime
+	info.rawChildrenUserWaitTime	= from.rawChildrenUserWaitTime
+	info.rawChildrenKernelWaitTime	= from.rawChildrenKernelWaitTime
+	info.priority			= from.priority
+	info.nice			= from.nice
+	info.numberOfThreads		= from.numberOfThreads
+	// itrealvalue
+	info.relativeStartTime		= from.relativeStartTime
+	info.virtualMemory		= from.virtualMemory
+	info.residentSetSize		= from.residentSetSize
+	info.softLimitResidentSetSize	= from.softLimitResidentSetSize
+	info.startCode			= from.startCode
+	info.endCode			= from.endCode
+	info.startStack			= from.startStack
+	info.espStackPointer		= from.espStackPointer
+	info.eipInstructionPointer	= from.eipInstructionPointer
+	// signal
+	// blocked
+	// sigignore
+	// sigcatch
+
+	// TODO the rest from `man 5 proc`
+}
+
+func (info *ProcessInfo) String() string {
+	s := " Name:\t%v\n" +
+" Pid:\t%v\n" +
+" State:\t%v\n" +
+" ParentProcessId:\t%v\n" +
+" ProcessGroupId:\t%v\n" +
+" SessionId:\t%v\n" +
+" Tty:\t%v\n" +
+" ForegroundProcessId:\t%v\n" +
+" KernelFlags:\t%v\n" +
+" MemoryMinorFaults:\t%v\n" +
+" ChildrenMinorFaults:\t%v\n" +
+" MemoryMajorFaults:\t%v\n" +
+" ChildrenMajorFaults:\t%v\n" +
+" RawUserTime:\t%v\n" +
+" RawSchduledTime:\t%v\n" +
+" RawChildrenUserWaitTime:\t%v\n" +
+" RawChildrenKernelWaitTime:\t%v\n" +
+" Priority:\t%v\n" +
+" Nice:\t%v\n" +
+" NumberOfThreads:\t%v\n" +
+" RelativeStartTime:\t%v\n" +
+" VirtualMemory:\t%v\n" +
+" ResidentSetSize:\t%v\n" +
+" SoftLimitResidentSetSize:\t%v\n" +
+" StartCode:\t%v\n" +
+" EndCode:\t%v\n" +
+" StartStack:\t%v\n" +
+" EspStackPointer:\t%v\n" +
+" EipInstructionPointer:\t%v\n"
+    return fmt.Sprintf(s,
+	info.name,
+	info.id,
+	info.state,
+	info.parentProcessId,
+	info.processGroupId,
+	info.sessionId,
+	info.tty,
+	info.foregroundProcessId,
+	info.kernelFlags,
+	info.memoryMinorFaults,
+	info.childrenMinorFaults,
+	info.memoryMajorFaults,
+	info.childrenMajorFaults,
+	info.rawUserTime,
+	info.rawScheduledTime,
+	info.rawChildrenUserWaitTime,
+	info.rawChildrenKernelWaitTime,
+	info.priority,
+	info.nice,
+	info.numberOfThreads,
+	// itrealvalue
+	info.relativeStartTime,
+	info.virtualMemory,
+	info.residentSetSize,
+	info.softLimitResidentSetSize,
+	info.startCode,
+	info.endCode,
+	info.startStack,
+	info.espStackPointer,
+	info.eipInstructionPointer,
+	// signal
+	// blocked
+	// sigignore
+	// sigcatch
+    )
+
+	// TODO the rest from `man 5 proc`
+}
+
 // give process id
 func (process *ProcessInfo) Id() uint64 {
 	return process.id
@@ -303,4 +473,24 @@ func (process *ProcessInfo) Id() uint64 {
 // give process name
 func (process *ProcessInfo) Name() string {
 	return process.name
+}
+
+func (info *ProcessInfo) ParentProcessId() int32 {
+	return info.parentProcessId
+}
+
+func (info *ProcessInfo) Priority() int32 {
+	return info.priority
+}
+
+func (info *ProcessInfo) Nice() int32 {
+	return info.nice
+}
+
+func (info *ProcessInfo) NumberOfThreads() int32 {
+	return info.numberOfThreads
+}
+
+func (info *ProcessInfo) VirtualMemory() uint32 {
+	return info.virtualMemory
 }

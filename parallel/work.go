@@ -36,8 +36,6 @@ type Work struct {
 
 	// required to reset work.waitOnce
 	reset		sync.Once
-
-	Talk		chan string
 }
 
 // New York; determine number of workers by number of CPU or amaxworkers, whichever smaller
@@ -76,7 +74,6 @@ func (work *Work) Initialise(aworkers uint) {
 	}
 }
 
-// @interface
 // start workers - 1 in separate goroutines and run one in this goroutine.
 func (work *Work) Run(worker func()) {
 	if work.workers > 1 {
@@ -214,7 +211,7 @@ func (work *Work) Workers() uint {
 
 // usually it's a good idea to have 4 * more buffers then workers; please state a max
 func (work *Work) SuggestBufferSize(max uint) uint {
-	if work.workers * 4 > max && max > 0 {
+	if max > 0 && work.workers * 4 > max {
 		return max
 	}
 
@@ -235,4 +232,13 @@ func SuggestNumberOfWorkers(max uint) uint {
 	}
 
 	return uint(runtime.NumCPU() * 2)
+}
+
+// usually it's a good idea to have 4 * more buffers then workers; please state a max
+func SuggestBufferSize(max uint) uint {
+	if max > 0 && SuggestNumberOfWorkers(0) * 4 > max {
+		return max
+	}
+
+	return SuggestNumberOfWorkers(0) * 4
 }

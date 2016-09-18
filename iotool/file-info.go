@@ -28,14 +28,18 @@ func (info *FileInfo) Path() string {
 // number of hard links
 func (info *FileInfo) HardLinks() (hardLinks uint64) {
 	sys := info.Sys(); if sys != nil {
-		hardLinks = sys.(*syscall.Stat_t).Nlink
+		// 32 bit linux Nlink is 32bit
+		// 64 bit linux Nlink is 64bit
+		hardLinks = uint64(sys.(*syscall.Stat_t).Nlink)
 	}; return
 }
 
 // blocksize for file system I/O
 func (info *FileInfo) BlockSize() (blockSize int64) {
 	sys := info.Sys(); if sys != nil {
-		blockSize = sys.(*syscall.Stat_t).Blksize
+		// 32 bit linux Blksize is 32bit
+		// 64 bit linux Blksize is 64bit
+		blockSize = int64(sys.(*syscall.Stat_t).Blksize)
 	}; return
 }
 
