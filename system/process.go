@@ -27,9 +27,6 @@ type ProcessInfo struct {
 	globList			[]string
 	globKey				uint
 
-	// TODO add a set function
-	scanAll				bool
-
 	// TODO accessors
 	state				string
 	parentProcessId			int32
@@ -68,67 +65,6 @@ type ProcessInfo struct {
 	// TODO the rest from `man 5 proc`
 }
 
-// find a process by pid
-func FindProcess(aid uint64) (process *ProcessInfo, e error) {
-	process = &ProcessInfo{ id: aid }
-	return process, process.findById()
-}
-
-// find a process by pid given as string
-func FindProcessByStringId(aid string) (process *ProcessInfo, e error) {
-	pid, e := strconv.ParseUint(aid, 10, 0)
-	if e != nil { return }
-	return FindProcess(pid)
-}
-
-// find processes by name
-func FindProcessesByName(aname string) (processes []*ProcessInfo) {
-	process := &ProcessInfo{ search: aname }
-	for process.findByName() {
-		processes = append(processes, process.MakeCopy())
-	}; return
-}
-
-// find current users processes
-func FindMyProcesses() (processes []*ProcessInfo) {
-	process := &ProcessInfo{}
-	for process.findByCurrentUser() {
-		processes = append(processes, process.MakeCopy())
-	}; return
-}
-
-// today is the oldest you've ever been ...
-func FindOldestProcessByName(aname string) (process *ProcessInfo) {
-	list := FindProcessesByName(aname); min := uint64(0)
-	for _, listProcess := range list {
-		if min == 0 || min >= listProcess.relativeStartTime {
-			min = listProcess.relativeStartTime
-			process = listProcess
-		}
-	}; return
-}
-
-// ... and the youngest you'll ever be again
-func FindYoungestProcessByName(aname string) (process *ProcessInfo) {
-	list := FindProcessesByName(aname); max := uint64(0)
-	for _, listProcess := range list {
-		if listProcess.relativeStartTime >= max {
-			max = listProcess.relativeStartTime
-			process = listProcess
-		}
-	}; return
-}
-
-// read from /proc/self/
-func Self() (process *ProcessInfo) {
-	process = &ProcessInfo{}
-
-	handler, _ := iotool.Open(iotool.ReadOnly(), fmt.Sprintf(PROC_STAT_FILE, "self"))
-	process.scanStat(handler)
-
-	return
-}
-
 // find process by id
 func (info *ProcessInfo) findById() (e error) {
 	if info.id == 0 { return INVALID_PROCESS_ID_ERROR }
@@ -138,8 +74,10 @@ func (info *ProcessInfo) findById() (e error) {
 	return info.scanStat(handler)
 }
 
-// find a process by name. first call gives first result, second call second result ...
+// find a process by filter. first call gives first result, second call second result ...
 func (info *ProcessInfo) findBy(filter func(*ProcessInfo) bool) bool {
+	if filter == nil { return false }
+
 	if len(info.globList) == 0 { var e error
 		info.globList, e = filepath.Glob(PROC_GLOB); if e != nil { return false }
 	}
@@ -288,17 +226,6 @@ func (info *ProcessInfo) scanStat(handler iotool.FileInterface) (e error) {
 // 25
 	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
 		info.softLimitResidentSetSize, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
-
-
-
-
-
-	if !info.scanAll { return }
-
-
-
-
-
 // 26
 	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
 		utoobig, _ = strconv.ParseUint(string(scanner.Bytes()), 10, 32)
@@ -356,8 +283,6 @@ func (info *ProcessInfo) MakeCopyFrom(process *ProcessInfo) (processCopy *Proces
 func (info *ProcessInfo) Copy(from *ProcessInfo) {
 	info.id = from.id; info.name = from.name; info.search = from.search
 	info.owner = from.owner; info.group = from.group
-
-	info.scanAll			= from.scanAll
 
 	info.state			= from.state
 	info.parentProcessId		= from.parentProcessId
