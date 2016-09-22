@@ -210,29 +210,34 @@ func (helper *FileHelper) FileInfo(path string, lstat bool) (FileInfoInterface, 
 	return helper.fileInfo[path], e
 }
 
+// return if cli output is supported
 func (helper *FileHelper) SupportCli() bool {
 	return helper.supportCli
 }
 
 // toggle supportCli by setting STDIN and STDOUT in SetStdinStdout()
 
+// return if string is equal to STDIN token (usualley "-")
 func (helper *FileHelper) IsStdinToken(what string) bool {
 	return helper.stdinToken == what
 }
 
+// get STDIN to use
 func (helper *FileHelper) Stdin() io.Reader {
 	return helper.stdin
 }
 
+// get STDOUT to use
 func (helper *FileHelper) Stdout() io.Writer {
 	return helper.stdout
 }
 
+// get STDERR to use
 func (helper *FileHelper) Stderr() io.Writer {
 	return helper.stderr
 }
 
-// only support supplying both
+// set STDIN and STDOUT. only support supplying both
 func (helper *FileHelper) SetStdinStdout(astdinToken string, astdin io.Reader, astdout io.Writer) {
 	helper.supportCli = true
 	// disallow empty value
@@ -245,6 +250,7 @@ func (helper *FileHelper) SetStdinStdout(astdinToken string, astdin io.Reader, a
 	helper.stdout = astdout
 }
 
+// set STDERR to a io.Writer
 func (helper *FileHelper) SetStderr(astderr io.Writer) {
 	helper.stderr = astderr
 }
