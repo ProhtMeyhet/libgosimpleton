@@ -107,9 +107,9 @@ func (info *FileInfo) GroupId() (groupId int) {
 	}; return
 }
 
-// is file exeCUTEable
+// is file not a directory and exeCUTEable
 func (info *FileInfo) IsExecuteable() bool {
-	return info.Mode() & 0111 == 0111
+	return !info.IsDir() && info.Mode() & 0111 == 0111
 }
 
 // are two files the same

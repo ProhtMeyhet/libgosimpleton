@@ -5,10 +5,10 @@ import(
 )
 
 const(
-	// only changes with incompatible changes
+	// only changes with major changes
 	MAJOR_VERSION = "0"
 
-	// new features
+	// new features, maybe incompatible changes
 	MINOR_VERSION = "3"
 
 	// no incompatible changes, just bug fixes
