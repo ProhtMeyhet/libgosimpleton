@@ -30,15 +30,14 @@ type Load struct {
 	complete	string
 }
 
+// return average system load
 func AverageLoad() (load *Load, e error) {
 	load = &Load{}
 	return load, load.parse()
 }
 
 func (load *Load) parse() (e error) {
-	handler, e := iotool.Open(iotool.ReadOnly(), PROC_LOAD_AVERAGE); if e != nil {
-		return
-	}
+	handler, e := iotool.Open(iotool.ReadOnly(), PROC_LOAD_AVERAGE); if e != nil { return }
 	return load.scan(handler)
 }
 

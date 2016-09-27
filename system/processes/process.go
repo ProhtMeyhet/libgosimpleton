@@ -1,11 +1,10 @@
-package system
+package processes
 
 import(
 	"bufio"
 	"path/filepath"
 	"fmt"
 	"os"
-	"os/user"
 	"strconv"
 	"strings"
 
@@ -21,11 +20,11 @@ type ProcessInfo struct {
 	group				int
 
 	search				string
-	thisUser			*user.User
-	thisUserId			int
 
 	globList			[]string
 	globKey				uint
+
+	commandLine			string
 
 	// TODO accessors
 	state				string
@@ -84,7 +83,7 @@ func (info *ProcessInfo) findBy(filter func(*ProcessInfo) bool) bool {
 
 	for ; info.globKey < uint(len(info.globList)); info.globKey++ {
 		id := info.globList[info.globKey][len(PROC_PATH):]
-		process, e := FindProcessByStringId(id)
+		process, e := FindByStringId(id)
 		// process ended in between
 		if e != nil { continue }
 		process.search = info.search
@@ -99,23 +98,7 @@ func (info *ProcessInfo) findBy(filter func(*ProcessInfo) bool) bool {
 	return false
 }
 
-func (info *ProcessInfo) findByName() bool {
-	return info.findBy(func(process *ProcessInfo) bool {
-		return strings.Contains(process.name, info.search)
-	})
-}
-
-func (info *ProcessInfo) findByCurrentUser() bool {
-	if info.thisUser == nil {
-		thisUser, e := user.Current(); if e != nil { return false }
-		info.thisUserId, _ = strconv.Atoi(thisUser.Uid)
-	}
-	return info.findBy(func(process *ProcessInfo) bool {
-		return info.thisUserId == process.owner
-	})
-}
-
-// scan /proc/[pid]/stat
+// scan /proc/[pid]/stat and read /proc/[pid]/cmdline
 func (info *ProcessInfo) scanStat(handler iotool.FileInterface) (e error) {
 	fileInfo, e := handler.Stat(); if e != nil { return }
 	iofileinfo := iotool.NewFileInfo(handler.Name(), fileInfo)
@@ -138,6 +121,11 @@ func (info *ProcessInfo) scanStat(handler iotool.FileInterface) (e error) {
 			info.name = string(scanner.Bytes())[1:]
 			info.name = info.name[:len(info.name)-1]
 		}
+
+	// read /proc/[pid]/cmdline
+	info.commandLine, e = iotool.ReadFileAsString(fmt.Sprintf(PROC_CMDLINE, info.id))
+	if e != nil { return UNEXPECTED_CMDLINE_ERROR }
+	info.commandLine = strings.Replace(info.commandLine, "\x00", " ", -1)
 
 // 3
 	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
@@ -283,6 +271,7 @@ func (info *ProcessInfo) MakeCopyFrom(process *ProcessInfo) (processCopy *Proces
 func (info *ProcessInfo) Copy(from *ProcessInfo) {
 	info.id = from.id; info.name = from.name; info.search = from.search
 	info.owner = from.owner; info.group = from.group
+	info.commandLine = from.commandLine
 
 	info.state			= from.state
 	info.parentProcessId		= from.parentProcessId
@@ -398,6 +387,10 @@ func (process *ProcessInfo) Id() uint64 {
 // give process name
 func (process *ProcessInfo) Name() string {
 	return process.name
+}
+
+func (process *ProcessInfo) CommandLine() string {
+	return process.commandLine
 }
 
 func (info *ProcessInfo) ParentProcessId() int32 {
