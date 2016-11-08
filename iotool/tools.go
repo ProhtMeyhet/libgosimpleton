@@ -2,8 +2,20 @@ package iotool
 
 import(
 	"io"
+	"io/ioutil"
 	"os"
 )
+
+func ReadFile(path string) (result []byte, e error) {
+	helper := ReadOnly().ToggleFileAdviceReadSequential()
+	handler, e := Open(helper, path); if e != nil { return }
+	return ioutil.ReadAll(handler)
+}
+
+func ReadFileAsString(path string) (result string, e error) {
+	bytes, e := ReadFile(path); if e != nil { return }
+	return string(bytes), e
+}
 
 // alias for WriteFile to mirror io.ioutil behaviour
 func WriteTo(helper *FileHelper, path string, data []byte) (e error) {
