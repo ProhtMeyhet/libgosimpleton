@@ -197,7 +197,10 @@ func (helper *FileHelper) SetReadSize(to int) *FileHelper {
 // FIXME: correct lstat cache
 func (helper *FileHelper) FileInfo(path string, lstat bool) (FileInfoInterface, error) {
 	var e error
+	// concurrent map read and write
+	helper.Lock()
 	if _, ok := helper.fileInfo[path]; !ok {
+		helper.Unlock()
 		var info os.FileInfo
 		if lstat {
 			info, e = os.Lstat(path); if e != nil { return nil, e }
@@ -205,7 +208,7 @@ func (helper *FileHelper) FileInfo(path string, lstat bool) (FileInfoInterface, 
 			info, e = os.Stat(path); if e != nil { return nil, e }
 		}
 		helper.Lock(); helper.fileInfo[path] = NewFileInfo(path, info); helper.Unlock()
-	}
+	} else { helper.Unlock() }
 
 	return helper.fileInfo[path], e
 }
