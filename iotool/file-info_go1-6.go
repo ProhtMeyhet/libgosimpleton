@@ -10,4 +10,5 @@ import(
 func (info *FileInfo) Group() (group string) {
 	group = "???"; groupId := info.GroupId()
 	group = strconv.Itoa(int(groupId))
+	return
 }
