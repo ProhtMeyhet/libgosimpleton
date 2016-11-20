@@ -74,11 +74,12 @@ func (info *ProcessInfo) findById() (e error) {
 }
 
 // find a process by filter. first call gives first result, second call second result ...
+// panics if glob fails
 func (info *ProcessInfo) findBy(filter func(*ProcessInfo) bool) bool {
 	if filter == nil { return false }
 
 	if len(info.globList) == 0 { var e error
-		info.globList, e = filepath.Glob(PROC_GLOB); if e != nil { return false }
+		info.globList, e = filepath.Glob(PROC_GLOB); if e != nil { panic(e); return false }
 	}
 
 	for ; info.globKey < uint(len(info.globList)); info.globKey++ {

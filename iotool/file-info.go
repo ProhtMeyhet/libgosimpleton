@@ -89,17 +89,6 @@ func (info *FileInfo) UserId() (userId int) {
 	}; return
 }
 
-// group name of owner
-func (info *FileInfo) Group() (group string) {
-	group = "???"; groupId := info.GroupId(); if groupId >= 0 {
-	//FIXME in go 1.7 there will be user.LookupGroup
-	//	groupInfo, e := osuser.LookupGroup(userId); if e == nil {
-	//		group = groupInfo.Name
-			group = strconv.Itoa(int(groupId))
-	//	}
-	}; return
-}
-
 // group id of owner
 func (info *FileInfo) GroupId() (groupId int) {
 	sys := info.Sys(); if sys != nil {
