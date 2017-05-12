@@ -13,7 +13,7 @@ import(
 
 // process info from /proc/[pid]/stat
 type ProcessInfo struct {
-	id				uint64
+	id				uint
 	name				string
 
 	owner				int
@@ -111,8 +111,8 @@ func (info *ProcessInfo) scanStat(handler iotool.FileInterface) (e error) {
 	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
 		// pid
 		if info.id == 0 {
-			info.id, e = strconv.ParseUint(string(scanner.Bytes()), 10, 0)
-			if e != nil { return }
+			id, e := strconv.ParseUint(string(scanner.Bytes()), 10, 0); if e != nil { return e }
+			info.id = uint(id)
 		}
 
 // 2
@@ -381,7 +381,7 @@ func (info *ProcessInfo) String() string {
 }
 
 // give process id
-func (process *ProcessInfo) Id() uint64 {
+func (process *ProcessInfo) Id() uint {
 	return process.id
 }
 

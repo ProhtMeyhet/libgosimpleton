@@ -41,3 +41,8 @@ type WorkInterface interface {
 	// suggest a buffer size for filesystem i/o
 	SuggestFileBufferSize() uint
 }
+
+// wait for something
+type WaitInterface interface {
+	Wait()
+}

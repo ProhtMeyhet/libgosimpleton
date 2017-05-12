@@ -36,6 +36,9 @@ type Work struct {
 
 	// required to reset work.waitOnce
 	reset		sync.Once
+
+	// if 0, don't start anything. used by feeders
+//	lenghtHint	uint
 }
 
 // New York; determine number of workers by number of CPU or amaxworkers, whichever smaller
@@ -104,14 +107,19 @@ func (work *Work) Start(worker func()) {
 	}()
 }
 
+// go one worker with waitgroup
+func (work *Work) Go(worker func()) {
+	work.waitGroup.Add(1)
+	go func() {
+		worker()
+		work.waitGroup.Done()
+	}()
+}
+
 // start a bunch of workers with waitGroup
 func (work *Work) start(worker func()) {
 	for i := uint(0); i < work.workers; i++ {
-		work.waitGroup.Add(1)
-		go func() {
-			worker()
-			work.waitGroup.Done()
-		}()
+		work.Go(worker)
 	}
 }
 

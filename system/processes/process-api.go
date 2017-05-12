@@ -52,7 +52,7 @@ func WalkByGenerator(generator func() func(*ProcessInfo)) {
 }
 
 // find a process by pid
-func Find(aid uint64) (process *ProcessInfo, e error) {
+func Find(aid uint) (process *ProcessInfo, e error) {
 	process = &ProcessInfo{ id: aid }
 	return process, process.findById()
 }
@@ -60,7 +60,7 @@ func Find(aid uint64) (process *ProcessInfo, e error) {
 // find a process by pid given as string
 func FindByStringId(aid string) (process *ProcessInfo, e error) {
 	pid, e := strconv.ParseUint(aid, 10, 0); if e != nil { return }
-	return Find(pid)
+	return Find(uint(pid))
 }
 
 // find processes by name
@@ -111,19 +111,39 @@ func Self() (process *ProcessInfo) {
 /***** current user *****/
 
 // find all current users processes
+// panics if current user can't be determined
 func FindMyAll() (processes []*ProcessInfo) {
-	user, e := user.Current(); if e != nil { return }
+	user, e := user.Current(); if e != nil { panic(e) }
 	return FindBy(func(process *ProcessInfo) bool {
 		return User(process, user)
 	})
 }
 
 // find a process by pid
-func FindMy(aid uint64) (process *ProcessInfo, e error) {
-	user, e := user.Current(); if e != nil { return }
+// panics if current user can't be determined
+func FindMy(aid uint) (process *ProcessInfo) {
+	user, e := user.Current(); if e != nil { panic(e) }
 	process, e = Find(aid); if e != nil { return }
 	if !User(process, user) { return }
 	return
+}
+
+// find processes by name
+// panics if current user can't be determined
+func FindMyByName(aname string) (processes []*ProcessInfo) {
+	user, e := user.Current(); if e != nil { panic(e) }
+	return FindBy(func(process *ProcessInfo) bool {
+		return User(process, user) && Contains(process, aname)
+	})
+}
+
+// find processes by their exact name
+// panics if current user can't be determined
+func FindMyByExactName(aname string) (processes []*ProcessInfo) {
+	user, e := user.Current(); if e != nil { panic(e) }
+	return FindBy(func(process *ProcessInfo) bool {
+		return User(process, user) && Exact(process, aname)
+	})
 }
 
 /***** filters *****/
