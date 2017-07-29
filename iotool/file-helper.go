@@ -351,6 +351,13 @@ func (helper *FileHelper) DoNotTestForDirectory() bool {
 	return helper.doNotTestForDirectory
 }
 
+// please do not test for directory
+func (helper *FileHelper) ToggleDoNotTestForDirectory() *FileHelper {
+	helper.doNotTestForDirectory = !helper.doNotTestForDirectory
+	return helper
+}
+
+
 // please do file advice DONT_NEED
 func (helper *FileHelper) ToggleFileAdviceDontNeed() *FileHelper {
 	if !libgosimpleton.SET_FILE_ADVICE_DONTNEED { goto out }
