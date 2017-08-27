@@ -5,6 +5,12 @@ import(
 )
 
 type WorkInterface interface {
+	LockInterface
+
+	// wrapper around sync.WaitGroup.Wait(). must be thread safe (for example with sync.Once).
+	// only works if Start() or it's wrapper Do() are used.
+	WaitInterface
+
 	// used to enable other packages to implement a custom worker
 	Initialise(aworkers uint)
 
@@ -20,26 +26,28 @@ type WorkInterface interface {
 	Do(worker func())
 
 	// Start() N workers
-	Start(worker func())
-
-	// wrapper around sync.WaitGroup.Wait(). must be thread safe (for example with sync.Once).
-	// only works if Start() or it's wrapper Do() are used.
-	Wait()
+	Start(worker func()) WorkInterface
 
 	// start one feeding goroutine. can be used multiple times
-	Feed(feeder func())
+	Feed(feeder func()) WorkInterface
 
 	// use time.Tick to execute a function periodically
 	Tick(duration time.Duration, tick func()) chan bool
 
 	// after duration, call cancel function
-	Timeout(duration time.Duration, cancel func())
+	Timeout(duration time.Duration, cancel func()) WorkInterface
 
 	// suggest a buffer size, best according to number of CPUs
+	// FIXME remove max uint argument
 	SuggestBufferSize(max uint) uint
 
 	// suggest a buffer size for filesystem i/o
 	SuggestFileBufferSize() uint
+}
+
+type LockInterface interface {
+	Lock()
+	Unlock()
 }
 
 // wait for something

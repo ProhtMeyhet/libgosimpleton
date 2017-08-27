@@ -3,18 +3,20 @@ package parallel
 import(
 	"testing"
 
+	"errors"
 	"math/rand"
+	"runtime"
 	"sync/atomic"
 	"time"
 )
 
 // Test Do(); counting the number of goroutines started; Do works with a waitGroup.
 func TestDo(t *testing.T) {
-	count, numberOfWorkers, finallyCalled := uint(0), SuggestNumberOfWorkers(0), false
+	count, finallyCalled := uint(0), false
 
 	// for test sake, give the number of workers manually. it is suggested to not do so.
 	// the given function is called after all workers finished working.
-	work := NewWorkFinallyManual(numberOfWorkers, func() {
+	work := NewWorkFinally(func() {
 		finallyCalled = true
 	})
 
@@ -28,8 +30,8 @@ func TestDo(t *testing.T) {
 		work.Unlock()
 	})
 
-	if count != numberOfWorkers {
-		t.Errorf("count: got %v, expected %v", count, numberOfWorkers)
+	if count != work.Workers() {
+		t.Errorf("count: got %v, expected %v", count, work.Workers())
 	}
 
 	if !finallyCalled {
@@ -39,15 +41,13 @@ func TestDo(t *testing.T) {
 
 // Test feeding a group of workers with an integer list to sum it up.
 func TestStartFeed(t *testing.T) {
-	count, numberOfWorkers := 0, SuggestNumberOfWorkers(0)
-	countList, sum := []int{ 1, 5, 15, 0 }, 21
+	count, countList, sum := 0, []int{ 1, 5, 15, 0 }, 21
+	work := NewWork()
 	// the communication between goroutines is done via this channel.
 	// make the channel buffered so the feeder does not have to block until
 	// a value is read. the buffer is made double the number of workers so the feeder
 	// can more probably write a value while the workers are processing earlier data
-	from := make(chan int, numberOfWorkers * 2)
-
-	work := NewWork(numberOfWorkers)
+	from := make(chan int, work.SuggestBufferSize(1))
 
 	// start feeding the workers; Feed() does not block. 
 	work.Feed(func() {
@@ -89,7 +89,7 @@ func TestStartFeed(t *testing.T) {
 // try the tick work. very slow.
 // TODO test the tick
 func TestTick(t *testing.T) {
-	count, iterations, numberOfWorkers := uint32(0), uint64(0), SuggestNumberOfWorkers(0)
+	count, iterations, numberOfWorkers := uint32(0), uint64(0), SuggestNumberOfWorkers()
 	timeout := 1 * time.Second
 	// the communication between goroutines is done via this channel.
 	// make the channel buffered so the feeder does not have to block until
@@ -102,7 +102,7 @@ func TestTick(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 
 	// the worker
-	work := NewWork(numberOfWorkers)
+	work := NewWorkManual(numberOfWorkers)
 
 	// start feeding the workers. the channel send will block, when the channel is full
 	ticker := work.Tick(10 * time.Millisecond, func() {
@@ -141,9 +141,72 @@ func TestTick(t *testing.T) {
 	t.Logf("iterations: %v, count: %v\n", iterations, count)
 }
 
+// test nesting work.Start() [work.Do() cannot be nested!]
+func TestNested(t *testing.T) {
+	count, finallyCalled := uint(0), false
+	work := NewWorkFinally(func() {
+		finallyCalled = true
+	})
+
+	numberOfWorkers := work.Workers()
+
+	// nest 3 Start()s
+	// start 4 workers which each start 4 workers which each start 4 workers
+	work.Start(func() {
+		work.Start(func() {
+			work.Start(func() {
+				work.Lock()
+				count++
+				work.Unlock()
+			})
+		})
+	}).Wait(); t.Logf("count %v", count)
+
+	if count != numberOfWorkers << 4 {
+		t.Errorf("count: got %v, expected %v", count, numberOfWorkers << 4)
+	}
+
+	if !finallyCalled {
+		t.Error("finally wasn't called!")
+	}
+
+	// reset
+	count = 0; finallyCalled = false
+
+	// start 4 workers which each start 4 workers which each start 4 workers
+	work.Start(func() {
+		work.Start(func() {
+			work.Start(func() {
+				work.Lock()
+				count++
+				work.Unlock()
+			})
+		})
+	})
+
+	// work.Do() cannot be nested because it calls work.Wait()!
+	work.Do(func() {
+		work.Start(func() {
+			work.Start(func() {
+				work.Lock()
+				count++
+				work.Unlock()
+			})
+		})
+	}); t.Logf("count2 %v", count)
+
+	if count != numberOfWorkers << 5 {
+		t.Errorf("count: got %v, expected %v", count, numberOfWorkers << 5)
+	}
+
+	if !finallyCalled {
+		t.Error("finally wasn't called!")
+	}
+}
+
 // test the run work. fast.
 func TestRun(t *testing.T) {
-	timeout := 1 * time.Second; numberOfWorkers := SuggestNumberOfWorkers(0)
+	timeout := 1 * time.Second; numberOfWorkers := SuggestNumberOfWorkers()
 
 	testRun(t, numberOfWorkers, timeout)
 }
@@ -151,7 +214,7 @@ func TestRun(t *testing.T) {
 // FIXME: fixme
 func BenchmarkRun(b *testing.B) {
 	timeout := 1 * time.Second
-	numberOfWorkers := SuggestNumberOfWorkers(0)
+	numberOfWorkers := SuggestNumberOfWorkers()
 
 	testRun(b, numberOfWorkers, timeout)
 }
@@ -170,7 +233,7 @@ func testRun(t testing.TB, numberOfWorkers uint, timeout time.Duration) {
 	rand.Seed(time.Now().UnixNano())
 
 	// the worker
-	work := NewWork(numberOfWorkers)
+	work := NewWorkManual(numberOfWorkers)
 
 	// start feeding the workers. the channel send will block, when the channel is full
 	// work.Feed has a recover function that'll catch writings on a closed channel.
@@ -285,13 +348,101 @@ func TestPanic(t *testing.T) {
 	})
 }*/
 
+func TestRecoverClosedChannel(t *testing.T) {
+	testRecoverClosedChannel(t, "send on closed channel", false)
+	testRecoverClosedChannel(t, "close on closed channel", false)
+	testRecoverClosedChannel(t, "See me, feel me, touch me, heal me", true)
+	testRecoverClosedChannelWithError(t, errors.New("send on closed channel"), false)
+	testRecoverClosedChannelWithError(t, errors.New("close on closed channel"), false)
+	testRecoverClosedChannelWithError(t, errors.New("See me, feel me, touch me, heal me"), true)
+}
+
+func testRecoverClosedChannel(t *testing.T, message string, shouldInternalRecover bool) {
+	defer func() {
+		recovered := recover(); if recovered == nil { return }
+		if e, ok := recovered.(string); ok {
+			if e != message && !shouldInternalRecover {
+				t.Errorf("unexpected panic! '%T' -> '%v'", e, e)
+			}
+		} else {
+			t.Errorf("unexpected panic2! '%T' -> '%v'", recovered, recovered)
+		}
+	}()
+
+	defer RecoverClosedChannel()
+
+	// panic(errors.New("error"))
+	// panic("error")
+	panic(message)
+}
+
+func testRecoverClosedChannelWithError(t *testing.T, message error, shouldInternalRecover bool) {
+	defer func() {
+		recovered := recover(); if recovered == nil { return }
+		if e, ok := recovered.(error); ok {
+			if e != message && !shouldInternalRecover {
+				t.Errorf("unexpected panic! '%T' -> '%v'", e, e)
+			}
+		} else {
+			t.Errorf("unexpected panic2! '%T' -> '%v'", recovered, recovered)
+		}
+	}()
+
+	defer RecoverClosedChannel()
+
+	// panic(errors.New("error"))
+	// panic("error")
+	panic(message)
+}
+
+func TestMeta(t *testing.T) {
+	workers := uint(runtime.NumCPU())
+	work := NewWorkManual(workers)
+
+	if workers != work.Workers() {
+		t.Errorf("work.Workers(): expected '%v', got '%v'", workers, work.Workers())
+	}
+
+	max := workers * NUMBER_OF_WORKERS_MULTIPLIER; bufferSize := SuggestNumberOfWorkers()
+	if max != bufferSize {
+		t.Errorf("work.SuggestBufferSize() expected '%v', got '%v'", max, bufferSize)
+	}
+
+	max = uint(0); bufferSize = SuggestMaximumNumberOfWorkers(max); expected := workers * NUMBER_OF_WORKERS_MULTIPLIER
+	if bufferSize == uint(0) {
+		t.Error("work.SuggestBufferSize() is 0!")
+	} else if bufferSize != expected {
+		t.Errorf("work.SuggestNumberOfWorkers expected '%v', got '%v'", expected, bufferSize)
+	}
+
+	max = uint(20); bufferSize = SuggestMaximumNumberOfWorkers(max); expected = workers * NUMBER_OF_WORKERS_MULTIPLIER
+	if max == bufferSize {
+		t.Errorf("work.SuggestNumberOfWorkers expected '%v', got '%v'", expected, bufferSize)
+	}
+
+	max = uint(12); bufferSize = work.SuggestBufferSize(max)
+	if bufferSize != workers * BUFFER_SIZE_MULTIPLIER {
+		t.Errorf("work.SuggestBufferSize() expected '%v', got '%v'", max, bufferSize)
+	}
+
+	max = uint(0); bufferSize = work.SuggestBufferSize(max)
+	if bufferSize == uint(0) {
+		t.Error("work.SuggestBufferSize() is 0!")
+	}
+
+	max = uint(20); bufferSize = work.SuggestBufferSize(max); expected = workers * BUFFER_SIZE_MULTIPLIER
+	if max == bufferSize {
+		t.Errorf("work.SuggestBufferSize() expected '%v', got '%v'", expected , bufferSize)
+	}
+}
+
 // JUST FOR TESTING, BAD EXAMPLE!
 // same as TestDo, but with busy waiting!
 func TestDo2(t *testing.T) {
-	count, numberOfWorkers := uint(0), SuggestNumberOfWorkers(0)
+	count, numberOfWorkers := uint(0), SuggestNumberOfWorkers()
 
 	// the worker
-	work := NewWork(numberOfWorkers)
+	work := NewWorkManual(numberOfWorkers)
 
 	// the actual work is done in the function given to Do()
 	work.Do(func() {

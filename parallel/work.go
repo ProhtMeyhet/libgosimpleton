@@ -42,10 +42,8 @@ type Work struct {
 }
 
 // New York; determine number of workers by number of CPU or amaxworkers, whichever smaller
-func NewWork(amaxworkers uint) (work *Work) {
-	work = &Work{}
-	work.Initialise(SuggestNumberOfWorkers(amaxworkers))
-	return
+func NewWork() (work *Work) {
+	return NewWorkManual(SuggestNumberOfWorkers())
 }
 
 // manually set number of workers
@@ -56,10 +54,8 @@ func NewWorkManual(aworkers uint) (work *Work) {
 }
 
 // New York Finally
-func NewWorkFinally(amaxworkers uint, afinally func()) (work *Work) {
-	work = &Work{ finallyFunc: afinally }
-	work.Initialise(SuggestNumberOfWorkers(amaxworkers))
-	return
+func NewWorkFinally(afinally func()) (work *Work) {
+	return NewWorkFinallyManual(SuggestNumberOfWorkers(), afinally)
 }
 
 // New York Finally with manual setting of workers
@@ -93,27 +89,29 @@ func (work *Work) Run(worker func()) {
 // all workers finish. should not be called with the go command.
 func (work *Work) Do(worker func()) {
 	work.start(worker)
-	work.finally()
+	work.Wait()
 }
 
 // start workers; a worker should read from a channel and from that do work
 // does not call finally as it doesn't record when or if a goroutine finishes.
 // can guarantee all work is done, if work.Wait is called. does not block.
-func (work *Work) Start(worker func()) {
+func (work *Work) Start(worker func()) WorkInterface {
 	work.waitGroup.Add(1)
 	go func() {
 		work.start(worker)
 		work.waitGroup.Done()
 	}()
+	return work
 }
 
 // go one worker with waitgroup
-func (work *Work) Go(worker func()) {
+func (work *Work) Go(worker func()) WorkInterface {
 	work.waitGroup.Add(1)
 	go func() {
 		worker()
 		work.waitGroup.Done()
 	}()
+	return work
 }
 
 // start a bunch of workers with waitGroup
@@ -126,11 +124,12 @@ func (work *Work) start(worker func()) {
 // feed workers; yummy; loop over something and push each value on a channel.
 // it is good practise to first start feeding and then to open the workers
 // via Do(), Start() or Run().
-func (work *Work) Feed(feeder func()) {
+func (work *Work) Feed(feeder func()) WorkInterface {
 	go func() {
 		defer RecoverClosedChannel()
 		feeder()
 	}()
+	return work
 }
 
 // feed workers by ticks; the tick function must not loop indefinitly, but return as quickly as possible.
@@ -159,38 +158,26 @@ func (work *Work) Tick(duration time.Duration, tick func()) (cancel chan bool) {
 // recover the panic 'send on closed channel' and ignore it. otherwise panic some more.
 func RecoverClosedChannel() {
 	// be safe for the future
-	recovered := recover(); if recovered != nil {
-		if e, ok := recovered.(error); ok {
-			if e.Error() != "send on closed channel" &&
-				e.Error() != "close of closed channel" {
-				panic(e)
-			}
-		}
+	recovered := recover(); if recovered == nil { return }
+
+	message := ""
+	if e, ok := recovered.(error); ok {
+		message = e.Error()
+	} else if e, ok := recovered.(string); ok {
+		message = e
 	}
 
-	if e, ok := recovered.(string); ok {
-		if e != "send on closed channel" &&
-			e != "close of closed channel" {
-			panic(e)
-		}
+	if message != "send on closed channel" && message != "close of closed channel" {
+		// panic some more
+		panic(recovered)
 	}
-}
-
-// ensure waitGroup.Wait() and work.finally are only called once then reset.
-func (work *Work) finally() {
-	work.Wait()
-
-	if work.finallyFunc == nil {
-		return
-	}
-
-	work.finallyFunc()
 }
 
 // a wrapper around the internally used *sync.WaitGroup.Wait(); thread safe
 func (work *Work) Wait() {
 	work.waitOnce.Do(func() {
 		work.waitGroup.Wait()
+		work.finally()
 		// allow resetting of work.waitGroup.Wait()
 		work.reset = sync.Once{}
 	})
@@ -202,51 +189,91 @@ func (work *Work) Wait() {
 	})
 }
 
+// TODO
+func (work *Work) finally() {
+	if work.finallyFunc != nil {
+		work.finallyFunc()
+	}
+}
+
 // cancel a work. this should be preferably done by closing a channel.
 // alternativly use a second, bool typed, channel to send a cancel signal.
-func (work *Work) Timeout(duration time.Duration, cancel func()) {
+func (work *Work) Timeout(duration time.Duration, cancel func()) WorkInterface {
 	go func() {
 		select {
 			case <-time.After(duration):
 				cancel()
 		}
 	}()
+	return work
 }
 
+/*
+ * convinience functions
+ */
+
+// return number of configured workers
 func (work *Work) Workers() uint {
 	return work.workers
 }
 
 // usually it's a good idea to have 4 * more buffers then workers; please state a max
-func (work *Work) SuggestBufferSize(max uint) uint {
-	if max > 0 && work.workers * 4 > max {
-		return max
-	}
-
-	return work.workers * 4
+func (work *Work) SuggestBufferSize(_ uint) uint {
+	// FIXME XXX TODO ignore uint argument for now
+	// TODO remove uint argument from here and from interface
+	return suggestBufferSize(work.workers * BUFFER_SIZE_MULTIPLIER, work.workers)
 }
 
+// suggest a minimum buffer size; please state a minimum
+func (work *Work) SuggestMinimumBufferSize(min uint) uint {
+	return suggestMinimumBufferSize(min, work.workers)
+}
+
+// suggest a size for filepaths to buffer
 func (work *Work) SuggestFileBufferSize() uint {
-	// TODO determine if too much or not enough
-	return work.workers * 16
+	return SuggestFileBufferSize(work.workers)
 }
-
-/* convinience functions */
 
 // suggest a number of workers.
-func SuggestNumberOfWorkers(max uint) uint {
-	if max > 0 && uint(runtime.NumCPU() * 2) > max {
+func SuggestNumberOfWorkers() uint {
+	return uint(runtime.NumCPU()) * NUMBER_OF_WORKERS_MULTIPLIER
+}
+
+// suggest a number of workers.
+func SuggestMaximumNumberOfWorkers(max uint) uint {
+	if max > 0 && uint(runtime.NumCPU()) * NUMBER_OF_WORKERS_MULTIPLIER > max {
 		return max
 	}
 
-	return uint(runtime.NumCPU() * 2)
+	return uint(runtime.NumCPU()) * NUMBER_OF_WORKERS_MULTIPLIER
 }
 
 // usually it's a good idea to have 4 * more buffers then workers; please state a max
 func SuggestBufferSize(max uint) uint {
-	if max > 0 && SuggestNumberOfWorkers(0) * 4 > max {
-		return max
-	}
+	return suggestBufferSize(max, SuggestNumberOfWorkers())
+}
 
-	return SuggestNumberOfWorkers(0) * 4
+func suggestBufferSize(max, workers uint) uint {
+	if max > 0 && workers * BUFFER_SIZE_MULTIPLIER > max {
+		return max
+	}; return workers * BUFFER_SIZE_MULTIPLIER
+}
+
+// suggest a minimum buffer size; please state a minimum
+func SuggestMinimumBufferSize(min uint) uint {
+	return suggestMinimumBufferSize(min, SuggestNumberOfWorkers())
+}
+
+func suggestMinimumBufferSize(min, workers uint) uint {
+	// allow zero for unbuffered channels
+	if min < workers * BUFFER_SIZE_MULTIPLIER {
+		return min
+	}; return workers * BUFFER_SIZE_MULTIPLIER
+}
+
+// suggest a size for filepaths to buffer
+func SuggestFileBufferSize(workers uint) uint {
+	if workers == 0 {
+		workers = SuggestNumberOfWorkers()
+	}; return workers * FILE_BUFFER_SIZE_MULTIPLIER
 }
