@@ -71,7 +71,7 @@ func FirstCharsEqual(s, p string) bool {
 }
 
 func LastCharsEqual(s, p string) bool {
-	return CharsEqual(s, p, len(p))
+	return CharsEqual(s, p, len(s) - len(p))
 }
 
 func CharsEqual(r, rp string, start int) bool {

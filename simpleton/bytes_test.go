@@ -73,14 +73,14 @@ func TestFirstBytesEqual(t *testing.T) {
 func TestLastBytesEqual(t *testing.T) {
 	in, in2, out := []byte("acdc"), []byte("dc"), true
 	if x := LastBytesEqual(in, in2); !x {
-		t.Errorf("LastBytesEqual(%s, %s) = %b, want %b", in, in2, x, out)
+		t.Errorf("LastBytesEqual(%s, %s) = %v, want %v", in, in2, x, out)
 	}
 }
 
 func TestBytesEqual(t *testing.T) {
 	in, in2, start, out := []byte("acdc"), []byte("cd"), 1, true
 	if x := BytesEqual(in, in2, start); !x {
-		t.Errorf("LastBytesEqual(%s, %s) = %b, want %b", in, in2, x, out)
+		t.Errorf("LastBytesEqual(%s, %s) = %v, want %v", in, in2, x, out)
 	}
 }
 

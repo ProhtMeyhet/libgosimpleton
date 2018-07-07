@@ -65,7 +65,7 @@ func FirstBytesEqual(b, p []byte) bool {
 }
 
 func LastBytesEqual(b, p []byte) bool {
-	return BytesEqual(b, p, len(p))
+	return BytesEqual(b, p, len(b) - len(p))
 }
 
 func BytesEqual(b, p []byte, start int) bool {

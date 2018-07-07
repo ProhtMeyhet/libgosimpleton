@@ -87,22 +87,22 @@ func TestGetLastChar(t *testing.T) {
 func TestGetLastChars(t *testing.T) {
 	in, num, out := "acdc", 2, "dc"
 	if x := GetLastChars(in, num); x != out {
-		t.Errorf("GetLastRunes(%v, %d) = %s, want %s", in, x, out)
+		t.Errorf("GetLastRunes(%v, %v) = %s, want %s", in, num, x, out)
 	}
 
 	in, num, out = "世界世界", 2, "世界"
 	if x := GetLastChars(in, num); x != out {
-		t.Errorf("GetLastRunes(%v, %d) = %v, want %v", []int32(in), num, []int32(x), []int32(out))
+		t.Errorf("GetLastRunes(%v, %v) = %v, want %v", []int32(in), num, []int32(x), []int32(out))
 	}
 
 	in, out = "世", "世"
 	if x := GetLastChars(in, num); x != out {
-		t.Errorf("GetLastRunes(%v, %d) = %v, want %v", []int32(in), num, []int32(x), []int32(out))
+		t.Errorf("GetLastRunes(%v, %v) = %v, want %v", []int32(in), num, []int32(x), []int32(out))
 	}
 
 	in, out = eMPTY_STRING, eMPTY_STRING
 	if x := GetLastChars(in, num); x != out {
-		t.Errorf("GetLastRunes(%v, %d) = %v, want %v", []int32(in), num, []int32(x), []int32(out))
+		t.Errorf("GetLastRunes(%v, %v) = %v, want %v", []int32(in), num, []int32(x), []int32(out))
 	}
 }
 
@@ -182,7 +182,7 @@ func TestFirstCharsEqual(t *testing.T) {
 func TestLastCharsEqual(t *testing.T) {
 	in, in2, out := "acdc", "dc", true
 	if x := LastCharsEqual(in, in2); x != out {
-		t.Errorf("LastCharsEqual(%s, %s) = %b, want %b", in, in2, x, out)
+		t.Errorf("LastCharsEqual(%s, %s) = %v, want %v", in, in2, x, out)
 	}
 
 	in2, out = "ac", false
