@@ -9,6 +9,7 @@ import(
 	"strings"
 
 	"github.com/ProhtMeyhet/libgosimpleton/iotool"
+	"github.com/ProhtMeyhet/libgosimpleton/simpleton"
 )
 
 // process info from /proc/[pid]/stat
@@ -102,7 +103,7 @@ func (info *ProcessInfo) findBy(filter func(*ProcessInfo) bool) bool {
 // scan /proc/[pid]/stat and read /proc/[pid]/cmdline
 func (info *ProcessInfo) scanStat(handler iotool.FileInterface) (e error) {
 	fileInfo, e := handler.Stat(); if e != nil { return }
-	iofileinfo := iotool.NewFileInfo(handler.Name(), fileInfo)
+	iofileinfo := iotool.NewOsFileInfo(handler.Name(), fileInfo)
 	info.owner = iofileinfo.UserId(); info.group = iofileinfo.GroupId()
 
 	scanner := bufio.NewScanner(handler); scanner.Split(bufio.ScanWords)
@@ -119,7 +120,16 @@ func (info *ProcessInfo) scanStat(handler iotool.FileInterface) (e error) {
 	if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
 		// name
 		if info.name == "" {
-			info.name = string(scanner.Bytes())[1:]
+			bytes := scanner.Bytes(); if len(bytes) == 0 { return UNEXPECTED_STAT_FORMAT_ERROR }
+
+			// name parsing (vim) vs (Web Content)
+			for ; !simpleton.LastBytesEqual(bytes, []byte(")")); {
+				if !scanner.Scan() { return UNEXPECTED_STAT_FORMAT_ERROR }
+				bytes = append(bytes, []byte(" ")...)
+				bytes = append(bytes, scanner.Bytes()...)
+			}
+
+			info.name = string(bytes)[1:]
 			info.name = info.name[:len(info.name)-1]
 		}
 
