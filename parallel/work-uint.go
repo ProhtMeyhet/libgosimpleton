@@ -4,16 +4,16 @@ import(
 
 )
 
-type WorkUint64 struct {
+type WorkUint struct {
 	Work
 
-	Talk	chan uint64
+	Talk	chan uint
 }
 
-func NewUints64Feeder(list ...uint64) (work *WorkUint64) {
-	work = &WorkUint64{}
+func NewUintsFeeder(list ...uint) (work *WorkUint) {
+	work = &WorkUint{}
 	work.Initialise(SuggestMaximumNumberOfWorkers(uint(len(list))))
-	work.Talk = make(chan uint64, work.SuggestBufferSize(uint(len(list))))
+	work.Talk = make(chan uint, work.SuggestBufferSize(uint(len(list))))
 
 	work.Feed(func() {
 		for _, s := range list {
