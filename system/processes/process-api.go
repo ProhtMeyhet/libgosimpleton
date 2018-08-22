@@ -6,24 +6,31 @@ import(
 	"strconv"
 
 	"github.com/ProhtMeyhet/libgosimpleton/iotool"
+	"github.com/ProhtMeyhet/libgosimpleton/parallel"
 	"github.com/ProhtMeyhet/libgosimpleton/system/user"
 )
 
 // find processes by your custom order. iterates over every process, your function
 // must give back true if found and false if not. if true, processes will contain
 // this ProcessInfo. do not, i repeat, do not retain the *ProcessInfo - it is reused.
-func FindBy(filter func(*ProcessInfo) bool) (processes []*ProcessInfo) {
+func FindBy(filter func(*ProcessInfo) bool) <-chan *ProcessInfo {
 	process := &ProcessInfo{}
-	for process.findBy(filter) {
-		processes = append(processes, process.MakeCopy())
-	}; return
+	processes := make(chan *ProcessInfo, parallel.SuggestBufferSize(0))
+	go func() {
+		for process.findBy(filter) {
+			processes <-process.MakeCopy()
+		}; close(processes)
+	}(); return processes
 }
 
-func FindAll() (processes []*ProcessInfo) {
+func FindAll() chan *ProcessInfo {
 	process := &ProcessInfo{}
-	for process.findBy(func(*ProcessInfo) bool { return true } ) {
-		processes = append(processes, process.MakeCopy())
-	}; return
+	processes := make(chan *ProcessInfo, parallel.SuggestBufferSize(0))
+	go func() {
+		for process.findBy(func(*ProcessInfo) bool { return true } ) {
+			processes <-process.MakeCopy()
+		}; close(processes)
+	}(); return processes
 }
 
 /* TODO
@@ -41,7 +48,7 @@ func FindLastBy(filter func(*ProcessInfo) bool) (process *ProcessInfo) {
 }*/
 
 // find by a generating func
-func FindByGenerator(generator func() func(*ProcessInfo) bool) (processes []*ProcessInfo) {
+func FindByGenerator(generator func() func(*ProcessInfo) bool) <-chan *ProcessInfo {
 	return FindBy(generator())
 }
 
@@ -71,14 +78,14 @@ func FindByStringId(aid string) (process *ProcessInfo, e error) {
 }
 
 // find processes by name
-func FindByName(aname string) (processes []*ProcessInfo) {
+func FindByName(aname string) <-chan *ProcessInfo {
 	return FindBy(func(process *ProcessInfo) bool {
 		return Contains(process, aname)
 	})
 }
 
 // find processes by their exact name
-func FindByExactName(aname string) (processes []*ProcessInfo) {
+func FindByExactName(aname string) <-chan *ProcessInfo {
 	return FindBy(func(process *ProcessInfo) bool {
 		return Exact(process, aname)
 	})
@@ -119,7 +126,7 @@ func Self() (process *ProcessInfo) {
 
 // find all current users processes
 // panics if current user can't be determined
-func FindMyAll() (processes []*ProcessInfo) {
+func FindMyAll() <-chan *ProcessInfo {
 	user, e := user.Current(); if e != nil { panic(e) }
 	return FindBy(func(process *ProcessInfo) bool {
 		return User(process, user)
@@ -137,7 +144,7 @@ func FindMy(aid uint) (process *ProcessInfo) {
 
 // find processes by name
 // panics if current user can't be determined
-func FindMyByName(aname string) (processes []*ProcessInfo) {
+func FindMyByName(aname string) <-chan *ProcessInfo {
 	user, e := user.Current(); if e != nil { panic(e) }
 	return FindBy(func(process *ProcessInfo) bool {
 		return User(process, user) && Contains(process, aname)
@@ -146,7 +153,7 @@ func FindMyByName(aname string) (processes []*ProcessInfo) {
 
 // find processes by their exact name
 // panics if current user can't be determined
-func FindMyByExactName(aname string) (processes []*ProcessInfo) {
+func FindMyByExactName(aname string) <-chan *ProcessInfo {
 	user, e := user.Current(); if e != nil { panic(e) }
 	return FindBy(func(process *ProcessInfo) bool {
 		return User(process, user) && Exact(process, aname)
