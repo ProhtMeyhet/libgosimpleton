@@ -4,6 +4,7 @@ import(
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 )
 
 func ReadFile(path string) (result []byte, e error) {
@@ -38,10 +39,9 @@ func Remove(handler FileInterface) error {
 	return os.Remove(handler.Name())
 }
 
+// is the error "/path/ is a directory"
 func IsDirectoryE(e error) bool {
-	if e == nil { return false }
-	message := e.Error()
-	return message == IsDirectoryError.Error() || len(message) >= 14 && message[len(message)-14:] == "is a directory"
+	return e != nil && (e.Error() == IsDirectoryError.Error() || strings.HasSuffix(e.Error(), "is a directory"))
 }
 
 //TODO simplee for now mirror os functions
@@ -52,4 +52,9 @@ func IsExist(e error) bool {
 //TODO simplee for now mirror os functions
 func IsNotExist(e error) bool {
 	return os.IsNotExist(e)
+}
+
+// is the error a permission denied error
+func IsPermissionDenied(e error) bool {
+	return e != nil && strings.HasSuffix(e.Error(), "ermission denied")
 }

@@ -47,3 +47,11 @@ type FileInfoInterface interface {
 	// is executeable
 	IsExecuteable() bool
 }
+
+type CopyEntryInterface interface {
+	From()	string
+	To()	string
+
+	FromInfo()	FileInfoInterface
+	ToInfo()	FileInfoInterface
+}
