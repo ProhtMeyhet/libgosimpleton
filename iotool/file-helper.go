@@ -207,7 +207,7 @@ func (helper *FileHelper) FileInfo(path string, lstat bool) (FileInfoInterface, 
 		} else {
 			info, e = os.Stat(path); if e != nil { return nil, e }
 		}
-		helper.Lock(); helper.fileInfo[path] = NewFileInfo(path, info); helper.Unlock()
+		helper.Lock(); helper.fileInfo[path] = NewOsFileInfo(path, info); helper.Unlock()
 	} else { helper.Unlock() }
 
 	return helper.fileInfo[path], e

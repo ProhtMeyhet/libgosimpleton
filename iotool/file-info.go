@@ -15,7 +15,13 @@ type FileInfo struct {
 }
 
 // fresh and shiny
-func NewFileInfo(apath string, from os.FileInfo) (info *FileInfo) {
+func NewFileInfo(apath string) (info *FileInfo, e error) {
+	osinfo, e := os.Stat(apath); if e != nil { return nil, e }
+	return NewOsFileInfo(apath, osinfo), nil
+}
+
+// fresh and shiny
+func NewOsFileInfo(apath string, from os.FileInfo) (info *FileInfo) {
 	info = &FileInfo{ from, apath }
 	return
 }
