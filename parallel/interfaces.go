@@ -31,20 +31,35 @@ type WorkInterface interface {
 	// start one feeding goroutine. can be used multiple times
 	Feed(feeder func()) WorkInterface
 
-	// use time.Tick to execute a function periodically
-	Tick(duration time.Duration, tick func()) chan bool
-
-	// after duration, call cancel function
-	Timeout(duration time.Duration, cancel func()) WorkInterface
-
 	// suggest a buffer size, best according to number of CPUs
 	// FIXME remove max uint argument
 	SuggestBufferSize(max uint) uint
 
 	// suggest a buffer size for filesystem i/o
 	SuggestFileBufferSize() uint
+
+//	SetFeedRecover(to func())
 }
 
+type WorkHelpInterface interface {
+	// suggest a buffer size, best according to number of CPUs
+	SuggestBufferSize() uint
+
+	// suggest a buffer size for filesystem i/o
+	SuggestFileBufferSize() uint
+}
+
+type TickWorkInterface interface {
+	// use time.Tick to execute a function periodically
+	Tick(duration time.Duration, tick func()) chan bool
+}
+
+type TimeoutWorkInterface interface {
+	// after duration, call cancel function
+	Timeout(duration time.Duration, cancel func()) WorkInterface
+}
+
+// backup copy
 type LockInterface interface {
 	Lock()
 	Unlock()
@@ -53,4 +68,14 @@ type LockInterface interface {
 // wait for something
 type WaitInterface interface {
 	Wait()
+}
+
+type DoneInterface interface {
+	Done()
+}
+
+type WaitGroupInterface interface {
+	WaitInterface
+	DoneInterface
+	Add(delta int)
 }
