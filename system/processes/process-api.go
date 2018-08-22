@@ -23,7 +23,7 @@ func FindBy(filter func(*ProcessInfo) bool) <-chan *ProcessInfo {
 	}(); return processes
 }
 
-func FindAll() chan *ProcessInfo {
+func FindAll() <-chan *ProcessInfo {
 	process := &ProcessInfo{}
 	processes := make(chan *ProcessInfo, parallel.SuggestBufferSize(0))
 	go func() {
