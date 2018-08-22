@@ -19,6 +19,13 @@ func FindBy(filter func(*ProcessInfo) bool) (processes []*ProcessInfo) {
 	}; return
 }
 
+func FindAll() (processes []*ProcessInfo) {
+	process := &ProcessInfo{}
+	for process.findBy(func(*ProcessInfo) bool { return true } ) {
+		processes = append(processes, process.MakeCopy())
+	}; return
+}
+
 /* TODO
 func FindFirstBy(filter func(*ProcessInfo) bool) (process *ProcessInfo) {
 	process := &ProcessInfo{}
