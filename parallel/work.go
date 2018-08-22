@@ -74,7 +74,9 @@ func (work *Work) Initialise(aworkers uint) {
 }
 
 // start workers - 1 in separate goroutines and run one in this goroutine.
+// intended for (web)servers
 func (work *Work) Run(worker func()) {
+	if work.workers == 0 { panic("work.workers is 0!") }
 	if work.workers > 1 {
 		for i := uint(0); i < work.workers -1; i++ {
 			go worker()
@@ -116,6 +118,7 @@ func (work *Work) Go(worker func()) WorkInterface {
 
 // start a bunch of workers with waitGroup
 func (work *Work) start(worker func()) {
+	if work.workers == 0 { panic("work.workers is 0!") }
 	for i := uint(0); i < work.workers; i++ {
 		work.Go(worker)
 	}
@@ -157,7 +160,6 @@ func (work *Work) Tick(duration time.Duration, tick func()) (cancel chan bool) {
 
 // recover the panic 'send on closed channel' and ignore it. otherwise panic some more.
 func RecoverClosedChannel() {
-	// be safe for the future
 	recovered := recover(); if recovered == nil { return }
 
 	message := ""

@@ -4,6 +4,7 @@ import(
 	"testing"
 
 	"errors"
+	"math"
 	"math/rand"
 	"runtime"
 	"sync/atomic"
@@ -14,7 +15,6 @@ import(
 func TestDo(t *testing.T) {
 	count, finallyCalled := uint(0), false
 
-	// for test sake, give the number of workers manually. it is suggested to not do so.
 	// the given function is called after all workers finished working.
 	work := NewWorkFinally(func() {
 		finallyCalled = true
@@ -39,15 +39,32 @@ func TestDo(t *testing.T) {
 	}
 }
 
+func BenchmarkStartFeed(b *testing.B) {
+	countList, countListStep, step, sum := []uint{}, []uint{ 1, 5, 15, 0 }, uint(21), uint(0)
+	for i := 0; i < b.N; i++ {
+		countList = append(countList, countListStep...); sum += step
+	}
+	b.ResetTimer()
+	testStartFeed(b, countList, sum)
+}
+
 // Test feeding a group of workers with an integer list to sum it up.
 func TestStartFeed(t *testing.T) {
-	count, countList, sum := 0, []int{ 1, 5, 15, 0 }, 21
+	countList, countListStep, step, sum := []uint{}, []uint{ 1, 5, 15, 0 }, uint(21), uint(0)
+	for i := 0; i < 10; i++ {
+		countList = append(countList, countListStep...); sum += step
+	}
+	testStartFeed(t, countList, sum)
+}
+
+func testStartFeed(t testing.TB, countList[]uint, sum uint) {
+	count := uint(0)
 	work := NewWork()
 	// the communication between goroutines is done via this channel.
 	// make the channel buffered so the feeder does not have to block until
 	// a value is read. the buffer is made double the number of workers so the feeder
 	// can more probably write a value while the workers are processing earlier data
-	from := make(chan int, work.SuggestBufferSize(1))
+	from := make(chan uint, work.SuggestBufferSize(1))
 
 	// start feeding the workers; Feed() does not block. 
 	work.Feed(func() {
@@ -71,9 +88,12 @@ func TestStartFeed(t *testing.T) {
 				if !ok { break infinite }
 				// locks are required, else additions can be lost. with simple math
 				// sync.atomic.AddUint() and such are a lock free alternative.
-				work.Lock()
-				count += add
-				work.Unlock()
+				// avoid locking if 0
+				if add > 0 {
+					work.Lock()
+					count += add
+					work.Unlock()
+				}
 			}
 		}
 	})
@@ -97,16 +117,16 @@ func TestTick(t *testing.T) {
 	// can more probably write a value while the workers are processing earlier data
 	from := make(chan uint32, numberOfWorkers * 2)
 
-	// *sigh* at least get some randomness... whoever figured this should be totally
-	// deterministic should be shot.
-	rand.Seed(time.Now().UnixNano())
+	// add some randomness
+	// rand.Seed(time.Now().UnixNano())
+	rand.Seed(1)
 
 	// the worker
 	work := NewWorkManual(numberOfWorkers)
 
 	// start feeding the workers. the channel send will block, when the channel is full
 	ticker := work.Tick(10 * time.Millisecond, func() {
-		from <-rand.Uint32()
+		from <-uint32(rand.Intn(10))
 	})
 
 	// do a timeout based cancel
@@ -130,6 +150,10 @@ func TestTick(t *testing.T) {
 				// two atomic calls can be used without locks.
 				atomic.AddUint32(&count, add)
 				atomic.AddUint64(&iterations, 1)
+
+				// since at most 100 ticks with numbers from 1-10 are expected
+				// overflows cannot happen. for an example with overflow checking
+				// see testRun()
 			}
 		}
 	})
@@ -143,12 +167,10 @@ func TestTick(t *testing.T) {
 
 // test nesting work.Start() [work.Do() cannot be nested!]
 func TestNested(t *testing.T) {
-	count, finallyCalled := uint(0), false
-	work := NewWorkFinally(func() {
+	count, finallyCalled, numberOfWorkers := uint(0), false, uint(4)
+	work := NewWorkFinallyManual(numberOfWorkers, func() {
 		finallyCalled = true
 	})
-
-	numberOfWorkers := work.Workers()
 
 	// nest 3 Start()s
 	// start 4 workers which each start 4 workers which each start 4 workers
@@ -206,14 +228,14 @@ func TestNested(t *testing.T) {
 
 // test the run work. fast.
 func TestRun(t *testing.T) {
-	timeout := 1 * time.Second; numberOfWorkers := SuggestNumberOfWorkers()
+	timeout := 5 * time.Second; numberOfWorkers := uint(5000) //SuggestNumberOfWorkers()
 
 	testRun(t, numberOfWorkers, timeout)
 }
 
 // FIXME: fixme
 func BenchmarkRun(b *testing.B) {
-	timeout := 1 * time.Second
+	timeout := 10 * time.Second
 	numberOfWorkers := SuggestNumberOfWorkers()
 
 	testRun(b, numberOfWorkers, timeout)
@@ -221,7 +243,9 @@ func BenchmarkRun(b *testing.B) {
 
 // internal testRun runs Work.Run
 func testRun(t testing.TB, numberOfWorkers uint, timeout time.Duration) {
-	count, iterations := uint32(0), uint64(0)
+	count, iterations, overflows := uint32(0), uint32(0), uint32(0)
+	// change compareAndSwapFailures only while locked
+	compareAndSwapFailures := uint32(0)
 	// the communication between goroutines is done via this channel.
 	// make the channel buffered so the feeder does not have to block unless it is full
 	// until a value is read. the buffer is made double the number of workers so the feeder
@@ -239,7 +263,7 @@ func testRun(t testing.TB, numberOfWorkers uint, timeout time.Duration) {
 	// work.Feed has a recover function that'll catch writings on a closed channel.
 	work.Feed(func() {
 		for {
-			from <-rand.Uint32()
+			from <-uint32(rand.Intn(10000))
 		}
 	})
 
@@ -259,10 +283,19 @@ func testRun(t testing.TB, numberOfWorkers uint, timeout time.Duration) {
 			// so break the loop to end the goroutine gracefully.
 			case add, ok := <-from:
 				if !ok { break infinite }
-				// since this is only adding and not doing something complex
-				// two atomic calls can be used without locks.
-				atomic.AddUint32(&count, add)
-				atomic.AddUint64(&iterations, 1)
+				atomic.AddUint32(&iterations, 1)
+			again:
+				if count > math.MaxUint32 - add {
+					// t.Logf seriously hurts performance (-99%)
+					// t.Logf("overflowing from %v + %v = %v :-)", count, add, myCount)
+					atomic.AddUint32(&overflows, 1)
+				}
+
+				myCount := count; myCount += add
+				if !atomic.CompareAndSwapUint32(&count, count, myCount) {
+					atomic.AddUint32(&compareAndSwapFailures, 1)
+					goto again
+				}
 			}
 		}
 	})
@@ -271,7 +304,8 @@ func testRun(t testing.TB, numberOfWorkers uint, timeout time.Duration) {
 		t.Errorf("count: got %v, expected to be greater then 0 !", count)
 	}
 
-	t.Logf("iterations: %v, count: %v\n", iterations, count)
+	t.Logf("iterations: %v, count: %v", iterations, count)
+	t.Logf("compareAndSwapFailures: %v, overflows: %v\n", compareAndSwapFailures, overflows)
 }
 
 /*
@@ -439,14 +473,11 @@ func TestMeta(t *testing.T) {
 // JUST FOR TESTING, BAD EXAMPLE!
 // same as TestDo, but with busy waiting!
 func TestDo2(t *testing.T) {
-	count, numberOfWorkers := uint(0), SuggestNumberOfWorkers()
+	count, iterations, numberOfWorkers := uint(0), uint(0), uint(50000)
 
-	// the worker
 	work := NewWorkManual(numberOfWorkers)
 
-	// the actual work is done in the function given to Do()
-	work.Do(func() {
-		// locks are required, else additions can be lost
+	work.Start(func() {
 		work.Lock()
 		count++
 		work.Unlock()
@@ -454,12 +485,13 @@ func TestDo2(t *testing.T) {
 
 	// this is busy waiting and it's not good as it uses up lot's of cpu time
 infinite:
-	for {
+	for ; ; iterations++ {
 		// a select with a default: checks all channels and if none
 		// has any data, the default is called immidiatly without blocking. 
 		select {
 		case <-time.After(2 * time.Second):
-			t.Errorf("timeout! count: %v, expected %v", count, numberOfWorkers)
+			t.Fatalf("timeout! count: %v, expected %v", count, numberOfWorkers)
+			break infinite
 		default:
 			if count == numberOfWorkers {
 				break infinite
@@ -467,4 +499,6 @@ infinite:
 		}
 	}
 
+	t.Logf("count: %v", count)
+	t.Logf("iterations: %v", iterations)
 }
