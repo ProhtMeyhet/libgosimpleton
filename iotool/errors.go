@@ -6,3 +6,4 @@ import(
 
 // well, duh!
 var IsDirectoryError = errors.New("That's a directory!")
+var IsNotDirectoryError = errors.New("That's _not_ a directory!")

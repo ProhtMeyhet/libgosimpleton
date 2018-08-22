@@ -106,6 +106,20 @@ func temporaryName(prefix string) string {
 	return directory + string(os.PathSeparator) + name
 }
 
+// open a directory
+func OpenDirectory(path string) (handler FileInterface, e error) {
+	fileInfo, ie := NewFileInfo(path); if ie != nil {
+		e = ie; goto out
+	} else if ie == nil && !fileInfo.IsDir() {
+		e = IsNotDirectoryError; goto out
+	}
+
+	handler, e = os.Open(path)
+
+out:
+	return
+}
+
 // close a bunch of files from a list.
 func Close(fileList ...FileInterface) {
 	for _, file := range fileList {
