@@ -1,6 +1,6 @@
-package caching
-
 // +build linux
+
+package caching
 
 import(
 	"testing"

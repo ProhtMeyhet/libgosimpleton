@@ -1,6 +1,6 @@
-package caching
-
 // +build linux
+
+package caching
 
 import(
 	"golang.org/x/exp/inotify"
@@ -45,6 +45,12 @@ func (cache *ObservingFileCache) init() {
 }
 
 func (cache *ObservingFileCache) Get(filename string) (value []byte, e error) {
+	cache.Lock() // do not defer cache.Unlock(); unlock as early as possible
+	value, ok := cache.cache[filename]; if ok {
+		cache.Unlock()
+		return value, nil
+	}
+
 	// must start goroutine first and wait until watch is started, otherwise
 	// events might not be catched due to a race condition
 	// for example a write might happen before the inotify is started, but the
@@ -52,6 +58,7 @@ func (cache *ObservingFileCache) Get(filename string) (value []byte, e error) {
 	started := make(chan bool, 1)
 	go cache.watch(filename, started)
 	<-started
+	cache.Unlock()
 	return cache.StupidFileCache.Get(filename)
 }
 
@@ -72,7 +79,9 @@ func (cache *ObservingFileCache) Get(filename string) (value []byte, e error) {
 	started <-true
 	if e != nil { logging.ErrorFormat("inotify: %v", e.Error());  return }
 
+	cache.Lock()
 	cache.threads[filename] = make(chan bool, 1)
+	cache.Unlock()
 
 infinite:
 	for {
@@ -85,7 +94,9 @@ infinite:
 			return
 		case _, goOn := <-cache.threads[filename]:
 			if !goOn {
+				cache.Lock()
 				delete(cache.threads, filename)
+				cache.Unlock()
 				break infinite
 			}
 		}
