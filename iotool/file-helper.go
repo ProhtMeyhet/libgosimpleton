@@ -1,6 +1,6 @@
-package iotool
-
 // +build linux
+
+package iotool
 
 import(
 	"io"

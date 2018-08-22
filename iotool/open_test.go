@@ -104,7 +104,7 @@ func TestTroll(t *testing.T) {
 
 func TestOpenFiles(t *testing.T) {
 	fileList, e := filepath.Glob("*test.go"); if e != nil {
-		t.Fatalf("unexpected glob error: %v")
+		t.Fatalf("unexpected glob error: %v", e)
 	}
 	t.Logf("using glob list: %v", fileList)
 
