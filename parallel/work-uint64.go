@@ -12,7 +12,7 @@ type WorkUint64 struct {
 
 func NewUints64Feeder(list ...uint64) (work *WorkUint64) {
 	work = &WorkUint64{}
-	work.Initialise(SuggestMaximumNumberOfWorkers(uint(len(list))))
+	work.Initialise(SuggestNumberOfWorkers())
 	work.Talk = make(chan uint64, work.SuggestBufferSize(uint(len(list))))
 
 	work.Feed(func() {

@@ -12,7 +12,7 @@ type WorkUint struct {
 
 func NewUintsFeeder(list ...uint) (work *WorkUint) {
 	work = &WorkUint{}
-	work.Initialise(SuggestMaximumNumberOfWorkers(uint(len(list))))
+	work.Initialise(SuggestNumberOfWorkers())
 	work.Talk = make(chan uint, work.SuggestBufferSize(uint(len(list))))
 
 	work.Feed(func() {

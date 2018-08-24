@@ -16,7 +16,7 @@ func NewFileInfoFeeder(helper *iotool.FileHelper, list ...string) (work *WorkPat
 	strings := NewStringsFeeder(list)
 
 	work = &WorkPaths{}
-	work.Initialise(SuggestNumberOfWorkers(uint(len(list))))
+	work.Initialise(SuggestNumberOfWorkers())
 	work.Talk = make(chan iotool.FileInfoInterface, work.SuggestBufferSize(uint(len(list))))
 
 	strings.Start(func() {
